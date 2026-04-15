@@ -1,17 +1,20 @@
 import React from 'react';
 import { C } from '../constants/colors';
 import { EVENTS } from '../constants/schedule';
-import { BNAME } from '../constants/status';
 import { fmt } from '../utils/format';
 import type { Battery } from '../types';
 
 interface GanttProps {
   batteries: Battery[];
   simHour: number;
+  dense?: boolean;
 }
 
-const Gantt: React.FC<GanttProps> = ({ batteries, simHour }) => {
+const Gantt: React.FC<GanttProps> = ({ batteries, simHour, dense }) => {
   const pct = (h: number): number => (h / 24) * 100;
+  const rowH = dense ? 22 : 26;
+  const gap = dense ? 6 : 8;
+
   return (
     <div>
       <div style={{ position: 'relative', height: 18, marginBottom: 4, marginLeft: 54 }}>
@@ -34,7 +37,7 @@ const Gantt: React.FC<GanttProps> = ({ batteries, simHour }) => {
       {batteries.map((b) => {
         const evts = EVENTS.filter((e) => e.b === b.id);
         return (
-          <div key={b.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', marginBottom: gap }}>
             <div
               style={{
                 width: 50,
@@ -47,12 +50,12 @@ const Gantt: React.FC<GanttProps> = ({ batteries, simHour }) => {
                 paddingRight: 8,
               }}
             >
-              {BNAME[b.id - 1]}
+              {b.name}
             </div>
             <div
               style={{
                 flex: 1,
-                height: 26,
+                height: rowH,
                 background: `${C.border}50`,
                 borderRadius: 6,
                 position: 'relative',

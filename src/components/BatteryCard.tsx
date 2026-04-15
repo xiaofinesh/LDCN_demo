@@ -1,28 +1,38 @@
 import React from 'react';
 import { C } from '../constants/colors';
-import { BNAME, SC, SL } from '../constants/status';
+import { SC, SL } from '../constants/status';
 import type { Battery } from '../types';
 
 interface BatteryCardProps {
   b: Battery;
   power: number;
+  onClick?: () => void;
+  compact?: boolean;
 }
 
-const BatteryCard: React.FC<BatteryCardProps> = ({ b, power }) => {
+const BatteryCard: React.FC<BatteryCardProps> = ({ b, power, onClick, compact }) => {
   const sc = SC[b.st];
   const socC = b.soc > 55 ? C.accent : b.soc > 20 ? C.amber : C.red;
-  const avail = Math.round(b.soc * 47.5);
-  const hrs = b.st === 'supplying' ? Math.max(1, Math.round(avail / power)) : null;
+  const avail = Math.round((b.soc / 100) * b.capacity * 0.95);
+  const hrs = b.st === 'supplying' && power > 0 ? Math.max(1, Math.round(avail / power)) : null;
   return (
     <div
+      onClick={onClick}
       style={{
         background: C.bgCard,
         border: `1px solid ${sc}22`,
         borderRadius: 14,
-        padding: '14px 18px',
+        padding: compact ? '12px 14px' : '14px 18px',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'border-color .4s',
+        transition: 'border-color .4s, transform .2s',
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) (e.currentTarget as HTMLDivElement).style.borderColor = `${sc}66`;
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) (e.currentTarget as HTMLDivElement).style.borderColor = `${sc}22`;
       }}
     >
       <div
@@ -41,14 +51,14 @@ const BatteryCard: React.FC<BatteryCardProps> = ({ b, power }) => {
         <div>
           <div
             style={{
-              fontSize: 16,
+              fontSize: compact ? 14 : 16,
               fontWeight: 800,
               color: C.text,
               fontFamily: "'Courier New',monospace",
               letterSpacing: 2,
             }}
           >
-            {BNAME[b.id - 1]}
+            {b.name}
           </div>
           <div
             style={{
@@ -69,7 +79,7 @@ const BatteryCard: React.FC<BatteryCardProps> = ({ b, power }) => {
         <div style={{ textAlign: 'right' }}>
           <div
             style={{
-              fontSize: 30,
+              fontSize: compact ? 24 : 30,
               fontWeight: 800,
               color: socC,
               fontFamily: "'Courier New',monospace",
@@ -77,7 +87,7 @@ const BatteryCard: React.FC<BatteryCardProps> = ({ b, power }) => {
             }}
           >
             {Math.round(b.soc)}
-            <span style={{ fontSize: 14, opacity: 0.7 }}>%</span>
+            <span style={{ fontSize: 13, opacity: 0.7 }}>%</span>
           </div>
         </div>
       </div>
@@ -96,9 +106,13 @@ const BatteryCard: React.FC<BatteryCardProps> = ({ b, power }) => {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.textMut }}>
-        <span>5,000 kWh</span>
+        <span>{b.capacity.toLocaleString()} kWh</span>
         <span style={{ color: C.textSec }}>可用 {avail.toLocaleString()} kWh</span>
-        {hrs && <span style={{ color: C.accent, fontWeight: 700 }}>≈ {hrs}h</span>}
+        {hrs ? (
+          <span style={{ color: C.accent, fontWeight: 700 }}>≈ {hrs}h</span>
+        ) : (
+          <span style={{ color: C.textMut }}>SOH {b.soh}%</span>
+        )}
       </div>
     </div>
   );

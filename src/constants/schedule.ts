@@ -1,30 +1,38 @@
 import { C } from './colors';
+import { INITIAL_FLEET } from '../data/fleet';
 import type { ScheduleEvent } from '../types';
 
-/* ── schedule events (standby = at platform) ── */
-export const EVENTS: ScheduleEvent[] = [
-  { b: 1, s: 0, e: 6, l: '供电', c: C.accent },
-  { b: 1, s: 6, e: 6.25, l: '换电', c: C.purple },
-  { b: 1, s: 6.25, e: 7, l: '运输→站', c: C.amber },
-  { b: 1, s: 7, e: 10, l: '充电', c: C.blue },
-  { b: 1, s: 10, e: 10.75, l: '运输→台', c: C.amber },
-  { b: 1, s: 10.75, e: 14.25, l: '平台待命', c: C.cyan },
-  { b: 1, s: 14.25, e: 14.5, l: '换电', c: C.purple },
-  { b: 1, s: 14.5, e: 24, l: '供电', c: C.accent },
+/**
+ * 为 8 块电池按相位自动生成甘特事件。与 simulation.ts 的相位保持一致。
+ */
+function genEventsFor(batteryId: number): ScheduleEvent[] {
+  const phase = ((batteryId - 1) * 3.5) % 24;
+  // 相对时间段 → 标签/颜色
+  const segments: Array<[number, number, string, string]> = [
+    [0, 6, '供电', C.accent],
+    [6, 6.25, '换电', C.purple],
+    [6.25, 7, '运输→站', C.amber],
+    [7, 10, '充电', C.blue],
+    [10, 10.75, '运输→台', C.amber],
+    [10.75, 14.25, '平台待命', C.cyan],
+    [14.25, 14.5, '换电', C.purple],
+    [14.5, 24, '供电', C.accent],
+  ];
 
-  { b: 2, s: 0, e: 2.5, l: '平台待命', c: C.cyan },
-  { b: 2, s: 2.5, e: 3.25, l: '运输→站', c: C.amber },
-  { b: 2, s: 3.25, e: 5.75, l: '充电', c: C.blue },
-  { b: 2, s: 5.75, e: 6, l: '运输→台', c: C.amber },
-  { b: 2, s: 6, e: 6.25, l: '换电', c: C.purple },
-  { b: 2, s: 6.25, e: 14.25, l: '供电', c: C.accent },
-  { b: 2, s: 14.25, e: 14.5, l: '换电', c: C.purple },
-  { b: 2, s: 14.5, e: 15.25, l: '运输→站', c: C.amber },
-  { b: 2, s: 15.25, e: 18.25, l: '充电', c: C.blue },
-  { b: 2, s: 18.25, e: 19, l: '运输→台', c: C.amber },
-  { b: 2, s: 19, e: 24, l: '平台待命', c: C.cyan },
+  const out: ScheduleEvent[] = [];
+  for (const [rs, re, l, c] of segments) {
+    // 映射到绝对 0..24，可能跨越 24 边界 → 拆成两段
+    const s = (rs + phase) % 24;
+    const e = (re + phase) % 24;
+    if (e > s) {
+      out.push({ b: batteryId, s, e, l, c });
+    } else if (e < s) {
+      // 跨界：[s..24] + [0..e]
+      if (s < 24) out.push({ b: batteryId, s, e: 24, l, c });
+      if (e > 0) out.push({ b: batteryId, s: 0, e, l, c });
+    }
+  }
+  return out;
+}
 
-  { b: 3, s: 0, e: 3, l: '充电', c: C.blue },
-  { b: 3, s: 3, e: 3.75, l: '运输→台', c: C.amber },
-  { b: 3, s: 3.75, e: 24, l: '平台待命', c: C.cyan },
-];
+export const EVENTS: ScheduleEvent[] = INITIAL_FLEET.flatMap((b) => genEventsFor(b.id));
