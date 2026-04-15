@@ -1,5 +1,6 @@
 import React from 'react';
 import { C } from '../constants/colors';
+import AnimatedNumber from './AnimatedNumber';
 
 interface MetricProps {
   label: string;
@@ -7,9 +8,11 @@ interface MetricProps {
   unit: string;
   color: string;
   sub?: string;
+  animated?: boolean;
 }
 
-const Metric: React.FC<MetricProps> = ({ label, value, unit, color, sub }) => {
+const Metric: React.FC<MetricProps> = ({ label, value, unit, color, sub, animated }) => {
+  const numeric = typeof value === 'number';
   return (
     <div
       style={{
@@ -44,7 +47,7 @@ const Metric: React.FC<MetricProps> = ({ label, value, unit, color, sub }) => {
           lineHeight: 1,
         }}
       >
-        {value}
+        {animated && numeric ? <AnimatedNumber value={value as number} /> : value}
         <span style={{ fontSize: 12, fontWeight: 500, marginLeft: 3, opacity: 0.6 }}>{unit}</span>
       </div>
       {sub && <div style={{ fontSize: 10, color: C.textMut, marginTop: 6 }}>{sub}</div>}

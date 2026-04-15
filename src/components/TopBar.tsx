@@ -1,9 +1,10 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { C } from '../constants/colors';
 import { TIERS, tier } from '../constants/pricing';
 import { fmt } from '../utils/format';
 
-interface HeaderProps {
+interface TopBarProps {
   simHour: number;
   running: boolean;
   setRunning: React.Dispatch<React.SetStateAction<boolean>>;
@@ -11,9 +12,21 @@ interface HeaderProps {
   setSpeed: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, setSpeed }) => {
+const TITLES: Record<string, { title: string; sub: string }> = {
+  '/': { title: '运营总览', sub: '全局态势 · 关键指标' },
+  '/scheduling': { title: '调度中心', sub: 'MILP + RL 双引擎 · 实时调度' },
+  '/batteries': { title: '电池管理', sub: '8 块移动储能电池组 · 健康度监测' },
+  '/platforms': { title: '平台拓扑', sub: '3 个钻井平台 · 2 个充电站' },
+  '/analytics': { title: '运营分析', sub: '成本节约 · 负荷趋势 · 设备健康' },
+  '/alerts': { title: '告警中心', sub: 'AI 诊断 · 智能处置' },
+  '/settings': { title: '参数配置', sub: '场景参数 · 策略切换' },
+};
+
+const TopBar: React.FC<TopBarProps> = ({ simHour, running, setRunning, speed, setSpeed }) => {
+  const loc = useLocation();
   const curTier = tier(Math.floor(simHour));
   const tInfo = TIERS[curTier];
+  const meta = TITLES[loc.pathname] || { title: '电池智能调度系统', sub: '' };
 
   return (
     <div
@@ -21,36 +34,23 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        padding: '18px 28px',
+        borderBottom: `1px solid ${C.border}`,
+        background: `${C.bg}cc`,
+        backdropFilter: 'blur(8px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        gap: 16,
         flexWrap: 'wrap',
-        gap: 12,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: `linear-gradient(135deg,${C.accent},${C.blue})`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 20,
-            color: '#000',
-            fontWeight: 900,
-            boxShadow: `0 4px 16px ${C.accent}30`,
-          }}
-        >
-          ⚡
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: 0.4 }}>{meta.title}</div>
+          <span style={{ fontSize: 10, color: C.accent, fontWeight: 700 }}>● 运行中</span>
         </div>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>电池智能调度系统</div>
-          <div style={{ fontSize: 11, color: C.textMut, marginTop: 2 }}>
-            移动储能钻井平台 · AI驱动运营管理
-            <span style={{ marginLeft: 10, color: C.accent, fontWeight: 600 }}>● 运行中</span>
-          </div>
-        </div>
+        <div style={{ fontSize: 11, color: C.textMut, marginTop: 3 }}>{meta.sub}</div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -59,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '8px 16px',
+            padding: '8px 14px',
             background: `${tInfo.c}0d`,
             border: `1px solid ${tInfo.c}25`,
             borderRadius: 10,
@@ -84,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '6px 14px',
+            padding: '6px 12px',
             background: C.bgCard,
             border: `1px solid ${C.border}`,
             borderRadius: 10,
@@ -92,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
         >
           <div
             style={{
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 800,
               fontFamily: "'Courier New',monospace",
               color: C.text,
@@ -102,7 +102,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
           >
             {fmt(simHour, Math.floor((simHour % 1) * 60))}
           </div>
-          <div style={{ width: 1, height: 24, background: C.border }} />
+          <div style={{ width: 1, height: 22, background: C.border }} />
           <button
             onClick={() => setRunning(!running)}
             style={{
@@ -116,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
               fontWeight: 700,
             }}
           >
-            {running ? '⏸ 暂停' : '▶ 启动模拟'}
+            {running ? '⏸ 暂停' : '▶ 启动'}
           </button>
           <select
             value={speed}
@@ -135,6 +135,7 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
             <option value={2}>2×</option>
             <option value={4}>4×</option>
             <option value={8}>8×</option>
+            <option value={16}>16×</option>
           </select>
         </div>
       </div>
@@ -142,4 +143,4 @@ const Header: React.FC<HeaderProps> = ({ simHour, running, setRunning, speed, se
   );
 };
 
-export default Header;
+export default TopBar;

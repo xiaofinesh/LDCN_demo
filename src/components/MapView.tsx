@@ -1,6 +1,7 @@
 import React from 'react';
 import { C } from '../constants/colors';
-import { BNAME, SC, SL } from '../constants/status';
+import { SC, SL } from '../constants/status';
+import { PLATFORMS, STATIONS } from '../data/platforms';
 import type { Battery } from '../types';
 
 interface MapViewProps {
@@ -9,19 +10,33 @@ interface MapViewProps {
 }
 
 const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
-  const PX = 520, PY = 100, SX = 145, SY = 315;
+  const centralStation = STATIONS[0];
+
+  const platformPos = (platformId: number) => {
+    const p = PLATFORMS.find((p) => p.id === platformId) || PLATFORMS[0];
+    return { x: p.x, y: p.y };
+  };
 
   const pos = (b: Battery): { x: number; y: number } => {
+    const pl = platformPos(b.platformId);
+    const offset = ((b.id - 1) % 3) * 22 - 22;
     if (b.st === 'supplying' || b.st === 'standby' || b.st === 'swapping')
-      return { x: PX - 48 + b.id * 32, y: PY + 78 + b.id * 10 };
-    if (b.st === 'charging') return { x: SX - 30 + b.id * 28, y: SY - 58 };
+      return { x: pl.x + offset, y: pl.y + 78 + ((b.id - 1) % 3) * 8 };
+    if (b.st === 'charging')
+      return { x: centralStation.x - 30 + ((b.id - 1) % 3) * 28, y: centralStation.y - 58 };
     if (b.st === 'to_station') {
       const p = b.tp || 0.5;
-      return { x: PX + (SX - PX) * p, y: PY + (SY - PY) * p - 15 };
+      return {
+        x: pl.x + (centralStation.x - pl.x) * p,
+        y: pl.y + (centralStation.y - pl.y) * p - 15,
+      };
     }
     if (b.st === 'to_platform') {
       const p = b.tp || 0.5;
-      return { x: SX + (PX - SX) * p, y: SY + (PY - SY) * p - 15 };
+      return {
+        x: centralStation.x + (pl.x - centralStation.x) * p,
+        y: centralStation.y + (pl.y - centralStation.y) * p - 15,
+      };
     }
     return { x: 335, y: 210 };
   };
@@ -34,15 +49,23 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
           <stop offset="50%" stopColor={C.blue} stopOpacity="0.3" />
           <stop offset="100%" stopColor={C.accent} stopOpacity="0.5" />
         </linearGradient>
-        <filter id="gl"><feGaussianBlur stdDeviation="3" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        <filter id="gl">
+          <feGaussianBlur stdDeviation="3" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
-        <filter id="ds"><feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#000" floodOpacity="0.55" /></filter>
+        <filter id="ds">
+          <feDropShadow dx="0" dy="3" stdDeviation="5" floodColor="#000" floodOpacity="0.55" />
+        </filter>
         <radialGradient id="pglow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={C.accent} stopOpacity="0.12" /><stop offset="100%" stopColor={C.accent} stopOpacity="0" />
+          <stop offset="0%" stopColor={C.accent} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={C.accent} stopOpacity="0" />
         </radialGradient>
         <radialGradient id="sglow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={C.blue} stopOpacity="0.12" /><stop offset="100%" stopColor={C.blue} stopOpacity="0" />
+          <stop offset="0%" stopColor={C.blue} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={C.blue} stopOpacity="0" />
         </radialGradient>
       </defs>
 
@@ -54,62 +77,75 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
         <line key={`h${i}`} x1={0} y1={i * 40} x2={680} y2={i * 40} stroke={C.border} strokeWidth={0.3} opacity={0.4} />
       ))}
 
-      {/* Region text */}
       <text x={658} y={22} fill={C.textMut} fontSize="9" fontFamily="sans-serif" textAnchor="end" opacity="0.5">
         河北省 · 沧州 / 保定交界
       </text>
 
-      {/* Route path */}
-      <path
-        d={`M${PX},${PY + 42} Q${PX - 80},${(PY + SY) / 2} ${SX},${SY - 42}`}
-        stroke="url(#rG)"
-        strokeWidth="2"
-        fill="none"
-        strokeDasharray="5,7"
-        opacity="0.6"
-      >
-        <animate attributeName="stroke-dashoffset" values="0;-24" dur="3s" repeatCount="indefinite" />
-      </path>
+      {/* Routes: central station -> each platform */}
+      {PLATFORMS.map((p) => (
+        <path
+          key={`r${p.id}`}
+          d={`M${p.x},${p.y + 42} Q${(p.x + centralStation.x) / 2 - 40},${(p.y + centralStation.y) / 2} ${centralStation.x},${centralStation.y - 42}`}
+          stroke="url(#rG)"
+          strokeWidth="1.8"
+          fill="none"
+          strokeDasharray="5,7"
+          opacity="0.55"
+        >
+          <animate attributeName="stroke-dashoffset" values="0;-24" dur="3s" repeatCount="indefinite" />
+        </path>
+      ))}
 
-      {/* Distance badge */}
-      <g transform={`translate(${(PX + SX) / 2 + 35},${(PY + SY) / 2 - 30})`}>
-        <rect x="-44" y="-12" width="88" height="24" rx="12" fill={C.bgCard} stroke={C.border} strokeWidth="0.8" opacity="0.9" />
-        <text x="0" y="4" textAnchor="middle" fill={C.textMut} fontSize="10" fontFamily="sans-serif">≈ 30–60 km</text>
-      </g>
+      {/* Stations */}
+      {STATIONS.map((s) => (
+        <g key={`s${s.id}`}>
+          <circle cx={s.x} cy={s.y} r={80} fill="url(#sglow)" />
+          <circle cx={s.x} cy={s.y} r={52} fill="none" stroke={C.blue} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
+            <animateTransform attributeName="transform" type="rotate" from={`0 ${s.x} ${s.y}`} to={`-360 ${s.x} ${s.y}`} dur="25s" repeatCount="indefinite" />
+          </circle>
+          <rect x={s.x - 52} y={s.y - 28} width={104} height={56} rx={14} fill={C.bgCard} stroke={C.blue} strokeWidth="1" filter="url(#ds)" opacity="0.95" />
+          <rect x={s.x - 52} y={s.y - 28} width={104} height={2} rx={1} fill={C.blue} opacity="0.4" />
+          <circle cx={s.x - 32} cy={s.y - 8} r={3.5} fill={C.blue}>
+            <animate attributeName="opacity" values="1;0.3;1" dur="2.5s" repeatCount="indefinite" />
+          </circle>
+          <text x={s.x - 20} y={s.y - 4} fill={C.blue} fontSize="13" fontWeight="700" fontFamily="sans-serif">
+            {s.name}
+          </text>
+          <text x={s.x} y={s.y + 12} textAnchor="middle" fill={C.textSec} fontSize="10" fontFamily="sans-serif">
+            {s.location}
+          </text>
+          <text x={s.x} y={s.y + 24} textAnchor="middle" fill={C.textMut} fontSize="9" fontFamily="sans-serif">
+            {s.voltage} · {s.capacity.toLocaleString()}kW
+          </text>
+        </g>
+      ))}
 
-      {/* Platform glow */}
-      <circle cx={PX} cy={PY} r={90} fill="url(#pglow)" />
-      <circle cx={PX} cy={PY} r={58} fill="none" stroke={C.accent} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
-        <animateTransform attributeName="transform" type="rotate" from={`0 ${PX} ${PY}`} to={`360 ${PX} ${PY}`} dur="30s" repeatCount="indefinite" />
-      </circle>
-
-      {/* Platform box */}
-      <rect x={PX - 58} y={PY - 30} width={116} height={60} rx={14} fill={C.bgCard} stroke={C.accent} strokeWidth="1" filter="url(#ds)" opacity="0.95" />
-      <rect x={PX - 58} y={PY - 30} width={116} height={2} rx={1} fill={C.accent} opacity="0.4" />
-      <circle cx={PX - 38} cy={PY - 10} r={3.5} fill={C.accent}>
-        <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
-      </circle>
-      <text x={PX - 28} y={PY - 6} fill={C.accent} fontSize="14" fontWeight="700" fontFamily="sans-serif">钻井平台</text>
-      <text x={PX} y={PY + 10} textAnchor="middle" fill={C.textSec} fontSize="10" fontFamily="sans-serif">任丘市北部</text>
-      <text x={PX} y={PY + 22} textAnchor="middle" fill={C.textMut} fontSize="9" fontFamily="'Courier New',monospace">
-        {Math.round(471 + Math.sin(simHour * 1.3) * 150)} kW 负荷
-      </text>
-
-      {/* Station glow */}
-      <circle cx={SX} cy={SY} r={80} fill="url(#sglow)" />
-      <circle cx={SX} cy={SY} r={52} fill="none" stroke={C.blue} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
-        <animateTransform attributeName="transform" type="rotate" from={`0 ${SX} ${SY}`} to={`-360 ${SX} ${SY}`} dur="25s" repeatCount="indefinite" />
-      </circle>
-
-      {/* Station box */}
-      <rect x={SX - 52} y={SY - 28} width={104} height={56} rx={14} fill={C.bgCard} stroke={C.blue} strokeWidth="1" filter="url(#ds)" opacity="0.95" />
-      <rect x={SX - 52} y={SY - 28} width={104} height={2} rx={1} fill={C.blue} opacity="0.4" />
-      <circle cx={SX - 32} cy={SY - 8} r={3.5} fill={C.blue}>
-        <animate attributeName="opacity" values="1;0.3;1" dur="2.5s" repeatCount="indefinite" />
-      </circle>
-      <text x={SX - 20} y={SY - 4} fill={C.blue} fontSize="14" fontWeight="700" fontFamily="sans-serif">充电站</text>
-      <text x={SX} y={SY + 12} textAnchor="middle" fill={C.textSec} fontSize="10" fontFamily="sans-serif">河间市</text>
-      <text x={SX} y={SY + 24} textAnchor="middle" fill={C.textMut} fontSize="9" fontFamily="sans-serif">10kV · 1,725kW</text>
+      {/* Platforms */}
+      {PLATFORMS.map((p) => {
+        const load = Math.round(p.baseLoad + Math.sin(simHour * 1.3 + p.id) * 90);
+        return (
+          <g key={`p${p.id}`}>
+            <circle cx={p.x} cy={p.y} r={90} fill="url(#pglow)" />
+            <circle cx={p.x} cy={p.y} r={58} fill="none" stroke={C.accent} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
+              <animateTransform attributeName="transform" type="rotate" from={`0 ${p.x} ${p.y}`} to={`360 ${p.x} ${p.y}`} dur="30s" repeatCount="indefinite" />
+            </circle>
+            <rect x={p.x - 58} y={p.y - 30} width={116} height={60} rx={14} fill={C.bgCard} stroke={C.accent} strokeWidth="1" filter="url(#ds)" opacity="0.95" />
+            <rect x={p.x - 58} y={p.y - 30} width={116} height={2} rx={1} fill={C.accent} opacity="0.4" />
+            <circle cx={p.x - 38} cy={p.y - 10} r={3.5} fill={C.accent}>
+              <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <text x={p.x - 28} y={p.y - 6} fill={C.accent} fontSize="13" fontWeight="700" fontFamily="sans-serif">
+              {p.name}
+            </text>
+            <text x={p.x} y={p.y + 10} textAnchor="middle" fill={C.textSec} fontSize="10" fontFamily="sans-serif">
+              {p.location}
+            </text>
+            <text x={p.x} y={p.y + 22} textAnchor="middle" fill={C.textMut} fontSize="9" fontFamily="'Courier New',monospace">
+              {load} kW 负荷
+            </text>
+          </g>
+        );
+      })}
 
       {/* Batteries */}
       {batteries.map((b) => {
@@ -119,29 +155,23 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
         const moving = b.st === 'to_station' || b.st === 'to_platform';
         return (
           <g key={b.id}>
-            {/* movement ring */}
             {moving && (
-              <circle cx={p.x} cy={p.y + 2} r={24} fill="none" stroke={C.amber} strokeWidth="0.8" opacity="0.3" strokeDasharray="3,4">
+              <circle cx={p.x} cy={p.y + 2} r={22} fill="none" stroke={C.amber} strokeWidth="0.8" opacity="0.3" strokeDasharray="3,4">
                 <animateTransform attributeName="transform" type="rotate" from={`0 ${p.x} ${p.y + 2}`} to={`360 ${p.x} ${p.y + 2}`} dur="3s" repeatCount="indefinite" />
               </circle>
             )}
-            {/* battery body */}
-            <rect x={p.x - 24} y={p.y - 14} width={48} height={28} rx={8} fill={C.bg} stroke={sc} strokeWidth="1.4" filter="url(#gl)" />
-            {/* SOC fill */}
-            <rect x={p.x - 20} y={p.y - 1} width={Math.max(1, (40 * b.soc) / 100)} height={5} rx={2.5} fill={socC} opacity="0.75">
+            <rect x={p.x - 22} y={p.y - 12} width={44} height={24} rx={7} fill={C.bg} stroke={sc} strokeWidth="1.3" filter="url(#gl)" />
+            <rect x={p.x - 18} y={p.y - 1} width={Math.max(1, (36 * b.soc) / 100)} height={4} rx={2} fill={socC} opacity="0.75">
               {b.st === 'charging' && <animate attributeName="opacity" values="0.75;0.4;0.75" dur="1.5s" repeatCount="indefinite" />}
             </rect>
-            {/* terminal */}
-            <rect x={p.x + 24} y={p.y - 4} width={4} height={8} rx={2} fill={sc} opacity="0.4" />
-            {/* SOC text */}
-            <text x={p.x} y={p.y - 5} textAnchor="middle" fill="#fff" fontSize="8.5" fontWeight="800" fontFamily="'Courier New',monospace">
+            <rect x={p.x + 22} y={p.y - 3} width={3} height={6} rx={1.5} fill={sc} opacity="0.4" />
+            <text x={p.x} y={p.y - 4} textAnchor="middle" fill="#fff" fontSize="7.5" fontWeight="800" fontFamily="'Courier New',monospace">
               {Math.round(b.soc)}%
             </text>
-            {/* label */}
-            <text x={p.x} y={p.y + 25} textAnchor="middle" fill={sc} fontSize="10.5" fontWeight="800" fontFamily="'Courier New',monospace" letterSpacing="1">
-              {BNAME[b.id - 1]}
+            <text x={p.x} y={p.y + 22} textAnchor="middle" fill={sc} fontSize="9.5" fontWeight="800" fontFamily="'Courier New',monospace" letterSpacing="1">
+              {b.name}
             </text>
-            <text x={p.x} y={p.y + 37} textAnchor="middle" fill={C.textMut} fontSize="8.5" fontFamily="sans-serif">
+            <text x={p.x} y={p.y + 33} textAnchor="middle" fill={C.textMut} fontSize="8" fontFamily="sans-serif">
               {SL[b.st]}
             </text>
           </g>
