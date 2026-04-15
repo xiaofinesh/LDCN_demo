@@ -8,6 +8,7 @@ import BatteriesPage from './pages/BatteriesPage';
 import PlatformsPage from './pages/PlatformsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AlertsPage from './pages/AlertsPage';
+import ExtremeScenariosPage from './pages/ExtremeScenariosPage';
 import SettingsPage from './pages/SettingsPage';
 import { useSimulation } from './hooks/useSimulation';
 
@@ -27,6 +28,7 @@ const App: React.FC = () => {
             <Route path="/platforms" element={<PlatformsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/scenarios" element={<ExtremeScenariosPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>

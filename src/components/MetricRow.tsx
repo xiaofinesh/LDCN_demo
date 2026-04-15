@@ -1,6 +1,7 @@
 import React from 'react';
 import { C } from '../constants/colors';
 import Metric from './Metric';
+import { totalChargingPower, totalSupplyingPower } from '../utils/simulation';
 import type { Battery } from '../types';
 
 interface MetricRowProps {
@@ -13,6 +14,8 @@ const MetricRow: React.FC<MetricRowProps> = ({ batteries, power, energy }) => {
   const supCount = batteries.filter((b) => b.st === 'supplying').length;
   const chargingCount = batteries.filter((b) => b.st === 'charging').length;
   const avgSoc = Math.round(batteries.reduce((a, b) => a + b.soc, 0) / batteries.length);
+  const chargePow = Math.round(totalChargingPower(batteries));
+  const supplyPow = Math.round(totalSupplyingPower(batteries));
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
       <Metric
@@ -23,11 +26,11 @@ const MetricRow: React.FC<MetricRowProps> = ({ batteries, power, energy }) => {
         sub={`${supCount} 块供电中 · ${chargingCount} 块充电中`}
       />
       <Metric
-        label="实时总功率"
+        label="实时平台负荷"
         value={power}
         unit="kW"
         color={C.blue}
-        sub="3 平台负荷合计"
+        sub="3 平台用电功率合计"
         animated
       />
       <Metric
@@ -46,8 +49,22 @@ const MetricRow: React.FC<MetricRowProps> = ({ batteries, power, energy }) => {
         sub={`共 ${batteries.length} 块 · 5,000 kWh/块`}
         animated
       />
-      <Metric label="预估日节省" value={1582} unit="元" color={C.accent} sub="充电成本优化 ≈20%" animated />
-      <Metric label="年化节省" value="47.5" unit="万" color={C.cyan} sub="按300天运营计算" />
+      <Metric
+        label="实时充电功率"
+        value={chargePow}
+        unit="kW"
+        color={C.cyan}
+        sub={`${chargingCount} 块在充电站 · 充入能量流`}
+        animated
+      />
+      <Metric
+        label="实时放电功率"
+        value={supplyPow}
+        unit="kW"
+        color={C.accent}
+        sub={`${supCount} 块在供电 · 输出能量流`}
+        animated
+      />
     </div>
   );
 };

@@ -22,6 +22,8 @@ export interface Battery {
   soh: number;
   /** 累计循环次数 */
   cycles: number;
+  /** 当前功率 kW：+ 充电中 / − 对外供电 / 0 静止 */
+  power: number;
 }
 
 export interface Platform {

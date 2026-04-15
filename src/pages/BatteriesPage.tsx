@@ -22,7 +22,7 @@ const BatteriesPage: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ color: C.textMut, fontSize: 10, fontWeight: 500 }}>
-                {['编号', '所属平台', 'SOC', '状态', '容量', 'SOH', '循环', ''].map((h) => (
+                {['编号', '所属平台', 'SOC', '状态', '功率', 'SOH', '循环', ''].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -84,8 +84,18 @@ const BatteriesPage: React.FC = () => {
                         {SL[b.st]}
                       </span>
                     </td>
-                    <td style={{ padding: '10px 10px', textAlign: 'right', color: C.textSec, fontFamily: "'Courier New',monospace" }}>
-                      {b.capacity.toLocaleString()}
+                    <td
+                      style={{
+                        padding: '10px 10px',
+                        textAlign: 'right',
+                        color: b.power > 0 ? C.cyan : b.power < 0 ? C.accent : C.textMut,
+                        fontFamily: "'Courier New',monospace",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {b.power === 0
+                        ? '—'
+                        : `${b.power > 0 ? '+' : ''}${Math.round(b.power)}`}
                     </td>
                     <td style={{ padding: '10px 10px', textAlign: 'right', color: C.textSec, fontFamily: "'Courier New',monospace" }}>
                       {b.soh}%
@@ -196,8 +206,12 @@ const BatteryDetail: React.FC<{ b: Battery }> = ({ b }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
         <InfoChip label="SOH" value={`${b.soh}%`} color={C.accent} />
         <InfoChip label="循环次数" value={b.cycles.toString()} color={C.blue} />
-        <InfoChip label="容量" value={`${b.capacity.toLocaleString()} kWh`} color={C.purple} />
-        <InfoChip label="可用能量" value={`${Math.round((b.soc / 100) * b.capacity * 0.95).toLocaleString()} kWh`} color={C.cyan} />
+        <InfoChip
+          label={b.power > 0 ? '充电功率' : b.power < 0 ? '放电功率' : '功率'}
+          value={b.power === 0 ? '0 kW' : `${b.power > 0 ? '+' : ''}${Math.round(b.power).toLocaleString()} kW`}
+          color={b.power > 0 ? C.cyan : b.power < 0 ? C.accent : C.textMut}
+        />
+        <InfoChip label="可用能量" value={`${Math.round((b.soc / 100) * b.capacity * 0.95).toLocaleString()} kWh`} color={C.purple} />
       </div>
 
       <div style={{ fontSize: 11, color: C.textSec, fontWeight: 700, marginBottom: 8 }}>参数规格</div>
