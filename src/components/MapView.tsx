@@ -2,11 +2,19 @@ import React from 'react';
 import { C } from '../constants/colors';
 import { SC, SL } from '../constants/status';
 import { PLATFORMS, STATIONS } from '../data/platforms';
+import { SCENARIOS, severityColor } from '../data/scenarios';
+import type { Scenario } from '../data/scenarios';
 import type { Battery } from '../types';
 
 interface MapViewProps {
   batteries: Battery[];
   simHour: number;
+  /** 当前激活的场景 id（null = 正常态） */
+  activeScenarioId?: string | null;
+  /** 场景演练进度 0..1 */
+  scenarioProgress?: number;
+  /** 点击场景热点 */
+  onScenarioClick?: (id: string) => void;
 }
 
 /* ── 电池 HUD 半径（SVG 坐标系） ── */
@@ -14,7 +22,13 @@ const HR = 28;
 const STROKE_W = 4;
 const CIRC = 2 * Math.PI * HR;
 
-const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
+const MapView: React.FC<MapViewProps> = ({ batteries, simHour, activeScenarioId, onScenarioClick }) => {
+  const activeScenario: Scenario | undefined = activeScenarioId
+    ? SCENARIOS.find((s) => s.id === activeScenarioId)
+    : undefined;
+  const affectedBats = new Set(activeScenario?.affectedBatteries ?? []);
+  const affectedPlatform = activeScenario?.affectedPlatform;
+  const sevC = activeScenario ? severityColor(activeScenario.severity) : C.red;
   const centralStation = STATIONS[0];
 
   const platformPos = (platformId: number) => {
@@ -122,20 +136,32 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
       {/* ── 钻井平台 ── */}
       {PLATFORMS.map((p) => {
         const load = Math.round(p.baseLoad + Math.sin(simHour * 1.3 + p.id) * 90);
+        const hit = affectedPlatform === p.id;
+        const strokeC = hit ? sevC : C.accent;
         return (
           <g key={`p${p.id}`}>
             <circle cx={p.x} cy={p.y} r={90} fill="url(#pglow)" />
-            <circle cx={p.x} cy={p.y} r={58} fill="none" stroke={C.accent} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
+            {/* 受影响时脉冲警示环 */}
+            {hit && (
+              <circle cx={p.x} cy={p.y} r={68} fill="none" stroke={sevC} strokeWidth="2" opacity="0.5" strokeDasharray="6 4">
+                <animate attributeName="opacity" values="0.6;0.15;0.6" dur="1s" repeatCount="indefinite" />
+                <animateTransform attributeName="transform" type="rotate" from={`0 ${p.x} ${p.y}`} to={`360 ${p.x} ${p.y}`} dur="4s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <circle cx={p.x} cy={p.y} r={58} fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.15" strokeDasharray="3,5">
               <animateTransform attributeName="transform" type="rotate" from={`0 ${p.x} ${p.y}`} to={`360 ${p.x} ${p.y}`} dur="30s" repeatCount="indefinite" />
             </circle>
-            <rect x={p.x - 58} y={p.y - 30} width={116} height={60} rx={14} fill={C.bgCard} stroke={C.accent} strokeWidth="1" filter="url(#ds)" opacity="0.95" />
-            <rect x={p.x - 58} y={p.y - 30} width={116} height={2} rx={1} fill={C.accent} opacity="0.4" />
-            <circle cx={p.x - 38} cy={p.y - 10} r={3.5} fill={C.accent}>
-              <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" />
+            <rect x={p.x - 58} y={p.y - 30} width={116} height={60} rx={14} fill={C.bgCard} stroke={strokeC} strokeWidth={hit ? 1.6 : 1} filter="url(#ds)" opacity="0.95" />
+            <rect x={p.x - 58} y={p.y - 30} width={116} height={2} rx={1} fill={strokeC} opacity={hit ? 0.7 : 0.4} />
+            <circle cx={p.x - 38} cy={p.y - 10} r={3.5} fill={strokeC}>
+              <animate attributeName="opacity" values="1;0.3;1" dur={hit ? '0.6s' : '2s'} repeatCount="indefinite" />
             </circle>
-            <text x={p.x - 28} y={p.y - 6} fill={C.accent} fontSize="13" fontWeight="700" fontFamily="sans-serif">{p.name}</text>
+            <text x={p.x - 28} y={p.y - 6} fill={strokeC} fontSize="13" fontWeight="700" fontFamily="sans-serif">{p.name}</text>
             <text x={p.x} y={p.y + 10} textAnchor="middle" fill={C.textSec} fontSize="10" fontFamily="sans-serif">{p.location}</text>
-            <text x={p.x} y={p.y + 22} textAnchor="middle" fill={C.textMut} fontSize="9" fontFamily="'Courier New',monospace">{load} kW</text>
+            <text x={p.x} y={p.y + 22} textAnchor="middle" fill={hit ? sevC : C.textMut} fontSize="9" fontFamily="'Courier New',monospace"
+              fontWeight={hit ? 700 : 400}>
+              {load} kW{hit ? ' ⚠' : ''}
+            </text>
           </g>
         );
       })}
@@ -143,8 +169,9 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
       {/* ── 电池 HUD 节点 ── */}
       {batteries.map((b) => {
         const p = pos(b);
-        const sc = SC[b.st];
-        const socC = b.soc > 55 ? C.accent : b.soc > 20 ? C.amber : C.red;
+        const isAffected = affectedBats.has(b.id);
+        const sc = isAffected ? sevC : SC[b.st];
+        const socC = isAffected ? sevC : (b.soc > 55 ? C.accent : b.soc > 20 ? C.amber : C.red);
         const moving = b.st === 'to_station' || b.st === 'to_platform';
         const charging = b.power > 0;
         const discharging = b.power < 0;
@@ -179,6 +206,14 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
                 <stop offset="100%" stopColor={socC} stopOpacity="0.3" />
               </linearGradient>
             </defs>
+
+            {/* 受影响告警脉冲 */}
+            {isAffected && (
+              <circle cx={p.x} cy={p.y} r={HR + 10} fill="none" stroke={sevC} strokeWidth="2" opacity="0.6">
+                <animate attributeName="r" values={`${HR + 10};${HR + 20};${HR + 10}`} dur="1.2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.6;0.1;0.6" dur="1.2s" repeatCount="indefinite" />
+              </circle>
+            )}
 
             {/* 运输中旋转环 */}
             {moving && (
@@ -262,6 +297,49 @@ const MapView: React.FC<MapViewProps> = ({ batteries, simHour }) => {
               textAnchor="middle" fill={C.textMut} fontSize="8" fontFamily="sans-serif">
               {SL[b.st]}
             </text>
+          </g>
+        );
+      })}
+      {/* ── 场景热点图标 ── */}
+      {SCENARIOS.map((s) => {
+        const sc = severityColor(s.severity);
+        const active = s.id === activeScenarioId;
+        const R2 = active ? 16 : 13;
+        return (
+          <g
+            key={`sc-${s.id}`}
+            style={{ cursor: 'pointer' }}
+            onClick={() => onScenarioClick?.(s.id)}
+          >
+            {/* 外圈脉冲 */}
+            <circle cx={s.mapX} cy={s.mapY} r={R2 + 6} fill="none" stroke={sc} strokeWidth={active ? 1.5 : 0.8} opacity={0.3}>
+              <animate attributeName="r" values={`${R2 + 4};${R2 + 12};${R2 + 4}`} dur={active ? '1.2s' : '3s'} repeatCount="indefinite" />
+              <animate attributeName="opacity" values={active ? '0.6;0.1;0.6' : '0.3;0.05;0.3'} dur={active ? '1.2s' : '3s'} repeatCount="indefinite" />
+            </circle>
+
+            {/* 背景圆 */}
+            <circle cx={s.mapX} cy={s.mapY} r={R2} fill={C.bg} stroke={sc}
+              strokeWidth={active ? 2.5 : 1.5} opacity={0.95}
+              style={{ filter: active ? `drop-shadow(0 0 10px ${sc})` : `drop-shadow(0 0 4px ${sc}88)` }}
+            />
+
+            {/* 图标 */}
+            <text x={s.mapX} y={s.mapY + (active ? 5 : 4)} textAnchor="middle"
+              fontSize={active ? 14 : 11} fill={sc} fontWeight="700">
+              {s.icon}
+            </text>
+
+            {/* 激活时显示标题 */}
+            {active && (
+              <g>
+                <rect x={s.mapX - 62} y={s.mapY - R2 - 22} width={124} height={18} rx={9}
+                  fill={C.bg} stroke={sc} strokeWidth="1" opacity="0.92" />
+                <text x={s.mapX} y={s.mapY - R2 - 10} textAnchor="middle"
+                  fontSize="9" fontWeight="700" fill={sc} fontFamily="sans-serif">
+                  {s.title}
+                </text>
+              </g>
+            )}
           </g>
         );
       })}
