@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
@@ -283,6 +284,7 @@ const PricingReportPage: React.FC = () => {
   const [activeTimeTab, setActiveTimeTab] = useState('month');
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   // 切换时间区间时刷新汇总（仅触发后端，前端展示沿用 mockup 数据）
   useEffect(() => {
@@ -360,7 +362,7 @@ const PricingReportPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMut, marginBottom: 8 }}>
-              <span style={{ cursor: 'pointer' }}>运营报表</span>
+              <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>运营报表</span>
               <span>›</span>
               <span style={{ color: C.text, fontWeight: 600 }}>电价优化分析</span>
             </div>
