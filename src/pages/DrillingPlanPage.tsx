@@ -73,16 +73,20 @@ const Input: React.FC<InputProps> = ({ value, placeholder, suffix }) => (
 interface SelectProps {
   value?: string;
   options?: string[];
+  onDemo?: () => void;
 }
 
-const Select: React.FC<SelectProps> = ({ value }) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    background: C.bgCard,
-    border: `1px solid ${C.border}`,
-    borderRadius: 7, padding: '0 14px', height: 42,
-    cursor: 'pointer',
-  }}>
+const Select: React.FC<SelectProps> = ({ value, onDemo }) => (
+  <div
+    onClick={onDemo}
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: C.bgCard,
+      border: `1px solid ${C.border}`,
+      borderRadius: 7, padding: '0 14px', height: 42,
+      cursor: 'pointer',
+    }}
+  >
     <span style={{ fontSize: 14, color: value ? C.text : C.textMut, fontWeight: value ? 600 : 400 }}>
       {value || '请选择'}
     </span>
@@ -92,16 +96,20 @@ const Select: React.FC<SelectProps> = ({ value }) => (
 
 interface DatePickerFieldProps {
   value: string;
+  onDemo?: () => void;
 }
 
-const DatePickerField: React.FC<DatePickerFieldProps> = ({ value }) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    background: C.bgCard,
-    border: `1px solid ${C.border}`,
-    borderRadius: 7, padding: '0 14px', height: 42,
-    cursor: 'pointer',
-  }}>
+const DatePickerField: React.FC<DatePickerFieldProps> = ({ value, onDemo }) => (
+  <div
+    onClick={onDemo}
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: C.bgCard,
+      border: `1px solid ${C.border}`,
+      borderRadius: 7, padding: '0 14px', height: 42,
+      cursor: 'pointer',
+    }}
+  >
     <span style={{ fontSize: 14, color: C.text, fontFamily: FONT_MONO, fontWeight: 600 }}>{value}</span>
     <span style={{ fontSize: 14 }}>📅</span>
   </div>
@@ -115,22 +123,27 @@ const TIME_SLOTS: string[] = [
 
 interface TimeSlotSelectorProps {
   selected: number[];
+  onToggle: (i: number) => void;
 }
 
-const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({ selected }) => (
+const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({ selected, onToggle }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
     {TIME_SLOTS.map((slot, i) => {
       const isSelected = selected.includes(i);
       return (
-        <div key={slot} style={{
-          padding: '10px 8px', borderRadius: 7, cursor: 'pointer',
-          textAlign: 'center', fontSize: 12, fontWeight: 700,
-          background: isSelected ? C.accent : C.bgCard,
-          color: isSelected ? '#fff' : C.textSec,
-          border: `1px solid ${isSelected ? C.accent : C.border}`,
-          fontFamily: FONT_MONO,
-          transition: 'all 0.15s',
-        }}>
+        <div
+          key={slot}
+          onClick={() => onToggle(i)}
+          style={{
+            padding: '10px 8px', borderRadius: 7, cursor: 'pointer',
+            textAlign: 'center', fontSize: 12, fontWeight: 700,
+            background: isSelected ? C.accent : C.bgCard,
+            color: isSelected ? '#fff' : C.textSec,
+            border: `1px solid ${isSelected ? C.accent : C.border}`,
+            fontFamily: FONT_MONO,
+            transition: 'all 0.15s',
+          }}
+        >
           {slot}
         </div>
       );
@@ -139,18 +152,21 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({ selected }) => (
 );
 
 // ── Map location picker ──
-const LocationPicker: React.FC = () => (
+const LocationPicker: React.FC<{ onPick?: () => void }> = ({ onPick }) => (
   <div style={{
     display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: 8,
   }}>
     <Input value="116.1428" placeholder="经度" />
     <Input value="38.7256" placeholder="纬度" />
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: C.accent, color: '#fff',
-      borderRadius: 7, cursor: 'pointer',
-      fontSize: 13, fontWeight: 700, gap: 6,
-    }}>
+    <div
+      onClick={onPick}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: C.accent, color: '#fff',
+        borderRadius: 7, cursor: 'pointer',
+        fontSize: 13, fontWeight: 700, gap: 6,
+      }}
+    >
       📍 地图选点
     </div>
   </div>
@@ -354,6 +370,20 @@ const DrillingPlanPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [rigType, depthM, days, hours]);
 
+  const runAiEstimate = async () => {
+    try {
+      toast.info('AI 正在重新预估日均用电量...');
+      const r = await api.post<{ estimate: EstimateResult }>(
+        '/api/drilling-plans/estimate',
+        { rigType, depthM, days, dailyRunHours: hours },
+      );
+      setEstimate(r.estimate);
+      toast.success(`预估完成 · 日均 ${r.estimate.dailyKwh.toLocaleString()} kWh`);
+    } catch {
+      toast.error('估算失败，请稍后重试');
+    }
+  };
+
   const submitPlan = async (status: 'draft' | 'submitted') => {
     if (busy) return;
     setBusy(true);
@@ -387,7 +417,14 @@ const DrillingPlanPage: React.FC = () => {
   void rigType; void setRigType; void depthM; void setDepthM;
   void days; void setDays; void hours; void setHours; void estimate;
   // Reserved for future interactivity; ensures useState import is used.
-  const [selectedTimeSlots] = useState<number[]>([2, 3, 4]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([2, 3, 4]);
+  const toggleTimeSlot = (i: number) => {
+    setSelectedTimeSlots((prev) =>
+      prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b),
+    );
+  };
+  const showDemo = (field: string) =>
+    toast.info(`${field}：演示稿占位，实际部署将对接贵方主数据`);
 
   return (
     <div style={{
@@ -399,9 +436,9 @@ const DrillingPlanPage: React.FC = () => {
         {/* Breadcrumb + title */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMut, marginBottom: 10 }}>
-            <span style={{ cursor: 'pointer' }}>钻井队</span>
+            <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>钻井队</span>
             <span>›</span>
-            <span style={{ cursor: 'pointer' }}>钻井计划</span>
+            <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>钻井计划</span>
             <span>›</span>
             <span style={{ color: C.text, fontWeight: 600 }}>新增钻井计划</span>
           </div>
@@ -465,10 +502,10 @@ const DrillingPlanPage: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 <FormField label="所属油田公司" required>
-                  <Select value="中国石油 · 华北油田分公司" />
+                  <Select value="中国石油 · 华北油田分公司" onDemo={() => showDemo('油田客户')} />
                 </FormField>
                 <FormField label="钻井队" required>
-                  <Select value="钻井一队（JH-01）" />
+                  <Select value="钻井一队（JH-01）" onDemo={() => showDemo('钻井队')} />
                 </FormField>
 
                 <FormField label="井位编号" required hint="如 JH-018">
@@ -479,7 +516,7 @@ const DrillingPlanPage: React.FC = () => {
                 </FormField>
 
                 <FormField label="井位位置（经纬度）" required hint="可从地图选点" fullWidth>
-                  <LocationPicker />
+                  <LocationPicker onPick={() => toast.info('地图选点：打开地图弹窗（演示稿占位）')} />
                 </FormField>
               </div>
             </div>
@@ -503,10 +540,10 @@ const DrillingPlanPage: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
                 <FormField label="计划开钻时间" required>
-                  <DatePickerField value="2026-04-24 08:00" />
+                  <DatePickerField value="2026-04-24 08:00" onDemo={() => showDemo('开钻时间')} />
                 </FormField>
                 <FormField label="预计完钻时间" required>
-                  <DatePickerField value="2026-05-08 18:00" />
+                  <DatePickerField value="2026-05-08 18:00" onDemo={() => showDemo('完钻时间')} />
                 </FormField>
                 <FormField label="连续工作天数" hint="自动计算">
                   <div style={{
@@ -541,7 +578,7 @@ const DrillingPlanPage: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 <FormField label="钻机型号" required>
-                  <Select value="ZJ40 (4000米钻机)" />
+                  <Select value="ZJ40 (4000米钻机)" onDemo={() => showDemo('钻机型号')} />
                 </FormField>
                 <FormField label="预估钻井深度" required>
                   <Input value="3,200" placeholder="深度数值" suffix="米" />
@@ -557,7 +594,7 @@ const DrillingPlanPage: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <Input value="12,400" placeholder="0" suffix="kWh" />
                     </div>
-                    <span style={{
+                    <span onClick={runAiEstimate} style={{
                       fontSize: 12, padding: '10px 14px', borderRadius: 7,
                       background: C.accentLight, color: C.accent,
                       cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap',
@@ -567,7 +604,7 @@ const DrillingPlanPage: React.FC = () => {
               </div>
 
               <FormField label="主要用电时段" hint="选择钻机高功率工作的时段（可多选）" required>
-                <TimeSlotSelector selected={selectedTimeSlots} />
+                <TimeSlotSelector selected={selectedTimeSlots} onToggle={toggleTimeSlot} />
               </FormField>
             </div>
 

@@ -455,7 +455,7 @@ const TabAISuggestion = () => (
   </div>
 );
 
-const TabHistory = () => (
+const TabHistory: React.FC<{ range: string; onRange: (r: string) => void }> = ({ range, onRange }) => (
   <div>
     <div style={{
       position: 'relative', width: '100%', height: 320,
@@ -542,15 +542,24 @@ const TabHistory = () => (
     {/* Date selector */}
     <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
       <span style={{ fontSize: 12, color: C.textSec }}>选择日期：</span>
-      {['今日', '昨日', '近7天', '近30天', '自定义'].map((t, i) => (
-        <span key={t} style={{
-          fontSize: 12, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
-          background: i === 0 ? C.accent : C.bgCard,
-          color: i === 0 ? '#fff' : C.textSec,
-          border: `1px solid ${i === 0 ? C.accent : C.border}`,
-          fontWeight: 600,
-        }}>{t}</span>
-      ))}
+      {['今日', '昨日', '近7天', '近30天', '自定义'].map((t) => {
+        const active = range === t;
+        return (
+          <span
+            key={t}
+            onClick={() => onRange(t)}
+            style={{
+              fontSize: 12, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
+              background: active ? C.accent : C.bgCard,
+              color: active ? '#fff' : C.textSec,
+              border: `1px solid ${active ? C.accent : C.border}`,
+              fontWeight: 600,
+            }}
+          >
+            {t}
+          </span>
+        );
+      })}
     </div>
   </div>
 );
@@ -617,6 +626,7 @@ const TabChargeLog = () => (
 // ── Main Battery Detail Page ──
 const BatteryDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('basic');
+  const [historyRange, setHistoryRange] = useState('今日');
   const st = STATUS_MAP[BATTERY.status as keyof typeof STATUS_MAP];
   const navigate = useNavigate();
   const toast = useToast();
@@ -855,7 +865,15 @@ const BatteryDetailPage: React.FC = () => {
             <div style={{ padding: '20px 24px', flex: 1 }}>
               {activeTab === 'basic' && <TabBasicInfo />}
               {activeTab === 'ai' && <TabAISuggestion />}
-              {activeTab === 'history' && <TabHistory />}
+              {activeTab === 'history' && (
+                <TabHistory
+                  range={historyRange}
+                  onRange={(r) => {
+                    setHistoryRange(r);
+                    toast.info(`切换历史范围：${r}`);
+                  }}
+                />
+              )}
               {activeTab === 'log' && <TabChargeLog />}
             </div>
           </div>
