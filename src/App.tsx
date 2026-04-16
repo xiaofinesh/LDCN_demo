@@ -6,20 +6,23 @@ import BatteryDetailPage from './pages/BatteryDetailPage';
 import DrillingPlanPage from './pages/DrillingPlanPage';
 import AlertsPage from './pages/AlertsPage';
 import PricingReportPage from './pages/PricingReportPage';
+import { ToastProvider } from './components/Toast';
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="/battery" element={<BatteryDetailPage />} />
-          <Route path="/drilling-plan" element={<DrillingPlanPage />} />
-          <Route path="/alerts" element={<AlertsPage />} />
-          <Route path="/pricing-report" element={<PricingReportPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="/battery" element={<BatteryDetailPage />} />
+            <Route path="/drilling-plan" element={<DrillingPlanPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/pricing-report" element={<PricingReportPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 };
 

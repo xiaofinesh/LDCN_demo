@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
 import { MAP_BASE64 } from '../assets/mapBase64';
+import { api } from '../api/client';
+import { useToast } from '../components/Toast';
 
 void FONT_SANS; // referenced implicitly inline
 
@@ -244,7 +247,20 @@ const GanttBar: React.FC<GanttBarProps> = ({ label, start, end, color, row }) =>
 
 // ── Real Map (使用高德地图截图) ──
 
-const RealMap = () => {
+const RealMap: React.FC = () => {
+  const [layer, setLayer] = useState<'satellite' | 'road' | 'label'>('road');
+  useEffect(() => {
+    api.get<{ layer: 'satellite' | 'road' | 'label' }>('/api/map/layer')
+      .then((r) => setLayer(r.layer)).catch(() => {});
+  }, []);
+  const onLayerClick = (label: '卫星' | '路网' | '标注') => {
+    const map: Record<string, 'satellite' | 'road' | 'label'> = {
+      '卫星': 'satellite', '路网': 'road', '标注': 'label',
+    };
+    const next = map[label];
+    setLayer(next);
+    api.post('/api/map/layer', { layer: next }).catch(() => {});
+  };
   // Image natural dimensions: 1400 x 698
   // SVG overlay uses the same coordinate system
   return (
@@ -408,16 +424,22 @@ const RealMap = () => {
       <div style={{
         position: 'absolute', top: 12, right: 12, display: 'flex', gap: 6,
       }}>
-        {['卫星', '路网', '标注'].map(t => (
-          <span key={t} style={{
+        {(['卫星', '路网', '标注'] as const).map(t => {
+          const map: Record<string, 'satellite' | 'road' | 'label'> = {
+            '卫星': 'satellite', '路网': 'road', '标注': 'label',
+          };
+          const active = layer === map[t];
+          return (
+          <span key={t} onClick={() => onLayerClick(t)} style={{
             fontSize: 12, padding: '7px 14px', borderRadius: 6,
-            background: t === '路网' ? C.accent : C.bgCard,
-            color: t === '路网' ? '#fff' : C.textSec,
-            border: `1px solid ${t === '路网' ? C.accent : C.border}`,
+            background: active ? C.accent : C.bgCard,
+            color: active ? '#fff' : C.textSec,
+            border: `1px solid ${active ? C.accent : C.border}`,
             cursor: 'pointer', fontWeight: 600,
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           }}>{t}</span>
-        ))}
+          );
+        })}
       </div>
 
       {/* Map legend */}
@@ -446,6 +468,39 @@ const RealMap = () => {
 
 // ── Main ──
 const DashboardPage: React.FC = () => {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+
+  const onExport = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ filename: string; message: string }>('/api/reports/export');
+      toast.success(`${r.message}（${r.filename}）`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onManualSchedule = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ message: string; eventId: string }>(
+        '/api/scheduling/manual',
+        { reason: '主控台手动触发' },
+      );
+      toast.success(`${r.message}（${r.eventId}）`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       {/* ── NAV_REMOVED — provided by AppLayout ── */}
@@ -513,18 +568,20 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <span style={{
+            <button onClick={onExport} style={{
               fontSize: 12, padding: '8px 16px', borderRadius: 7,
               background: C.bgCard, color: C.textSec,
               border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-            }}>导出报表</span>
-            <span style={{
+              fontFamily: 'inherit',
+            }}>导出报表</button>
+            <button onClick={onManualSchedule} style={{
               fontSize: 12, padding: '8px 16px', borderRadius: 7,
               background: C.accent, color: '#fff',
               cursor: 'pointer', fontWeight: 600,
               boxShadow: `0 2px 6px ${C.accent}40`,
-            }}>+ 手动调度</span>
+              border: 'none', fontFamily: 'inherit',
+            }}>+ 手动调度</button>
           </div>
         </div>
 
@@ -589,7 +646,7 @@ const DashboardPage: React.FC = () => {
                 display: 'flex', justifyContent: 'space-between',
               }}>
                 <span>动态消息</span>
-                <span style={{ fontSize: 11, color: C.accent, cursor: 'pointer', fontWeight: 600 }}>查看全部 →</span>
+                <span onClick={() => navigate('/alerts')} style={{ fontSize: 11, color: C.accent, cursor: 'pointer', fontWeight: 600 }}>查看全部 →</span>
               </div>
               {ALERTS.map((a, i) => {
                 const colors = {
