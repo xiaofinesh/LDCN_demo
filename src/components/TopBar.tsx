@@ -19,7 +19,6 @@ const TITLES: Record<string, { title: string; sub: string }> = {
   '/platforms': { title: '平台拓扑', sub: '3 个钻井平台 · 2 个充电站' },
   '/analytics': { title: '运营分析', sub: '成本节约 · 负荷趋势 · 设备健康' },
   '/alerts': { title: '告警中心', sub: 'AI 诊断 · 智能处置' },
-  '/scenarios': { title: '极端场景演练', sub: '市场冲击 · 设备故障 · 通讯/天气不可抗力' },
   '/settings': { title: '参数配置', sub: '场景参数 · 策略切换' },
 };
 

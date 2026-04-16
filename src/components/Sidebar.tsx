@@ -16,7 +16,6 @@ const NAV: NavItem[] = [
   { to: '/platforms', icon: '◎', label: '平台拓扑' },
   { to: '/analytics', icon: '▲', label: '运营分析' },
   { to: '/alerts', icon: '△', label: '告警中心' },
-  { to: '/scenarios', icon: '⚡', label: '极端场景' },
   { to: '/settings', icon: '⚙', label: '参数配置' },
 ];
 
