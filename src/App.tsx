@@ -1,37 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
-import SplashScreen from './components/SplashScreen';
 import DashboardPage from './pages/DashboardPage';
-import SchedulingPage from './pages/SchedulingPage';
-import BatteriesPage from './pages/BatteriesPage';
-import PlatformsPage from './pages/PlatformsPage';
-import AnalyticsPage from './pages/AnalyticsPage';
+import BatteryDetailPage from './pages/BatteryDetailPage';
+import DrillingPlanPage from './pages/DrillingPlanPage';
 import AlertsPage from './pages/AlertsPage';
-import SettingsPage from './pages/SettingsPage';
-import { useSimulation } from './hooks/useSimulation';
+import PricingReportPage from './pages/PricingReportPage';
 
 const App: React.FC = () => {
-  const [splashDone, setSplashDone] = useState(false);
-  const sim = useSimulation();
-
   return (
-    <>
-      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout sim={sim} />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="/scheduling" element={<SchedulingPage />} />
-            <Route path="/batteries" element={<BatteriesPage />} />
-            <Route path="/platforms" element={<PlatformsPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/alerts" element={<AlertsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="/battery" element={<BatteryDetailPage />} />
+          <Route path="/drilling-plan" element={<DrillingPlanPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/pricing-report" element={<PricingReportPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 };
 
