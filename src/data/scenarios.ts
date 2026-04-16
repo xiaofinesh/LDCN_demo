@@ -17,6 +17,7 @@ export interface Scenario {
   id: string;
   title: string;
   tag: string;
+  icon: string;
   severity: ScenarioSeverity;
   /** 触发条件 */
   trigger: string;
@@ -30,6 +31,15 @@ export interface Scenario {
   steps: ScenarioStep[];
   /** KPI：恢复时间 / 断电影响 / 成本影响 */
   metrics: Array<{ k: string; v: string; color: string }>;
+  /** 地图热点坐标 (SVG viewBox 760×540) */
+  mapX: number;
+  mapY: number;
+  /** 受影响的电池 id 列表（地图上高亮） */
+  affectedBatteries?: number[];
+  /** 受影响的平台 id（地图上高亮） */
+  affectedPlatform?: number;
+  /** 受影响的充电站 id */
+  affectedStation?: number;
 }
 
 const SEV_COLOR: Record<ScenarioSeverity, string> = {
@@ -46,7 +56,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'price_spike',
     title: '尖峰电价突袭',
     tag: '市场信号',
+    icon: '¥',
     severity: 'high',
+    mapX: 145, mapY: 250,
+    affectedStation: 1, affectedBatteries: [3],
     trigger: '电网通告：下一小时尖峰电价 ¥1.2709/度（上浮 20%）',
     duration: 60 * 60, // 1h
     impact: '全部在充电池、充电站出线功率',
@@ -69,7 +82,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'battery_failure',
     title: '电池模组故障',
     tag: '设备异常',
+    icon: '⚠',
     severity: 'critical',
+    mapX: 520, mapY: 55,
+    affectedPlatform: 1, affectedBatteries: [2],
     trigger: 'β-02 电池模组 #07 温度 68℃，BMS 报故障告警',
     duration: 30 * 60, // 30m
     impact: '平台 A 当班供电电池，单电池组熄弧风险',
@@ -93,7 +109,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'load_surge',
     title: '平台负荷激增',
     tag: '负荷冲击',
+    icon: '⚡',
     severity: 'critical',
+    mapX: 460, mapY: 145,
+    affectedPlatform: 3, affectedBatteries: [7, 8],
     trigger: '平台 C 钻机复合启动，瞬时负荷从 338 kW 激增至 1,150 kW',
     duration: 20 * 60, // 20m
     impact: '平台 C 供电裕度不足，当班电池 SOC 下降速度 3 倍',
@@ -116,7 +135,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'station_outage',
     title: '充电站电网故障',
     tag: '上游停电',
+    icon: '⊘',
     severity: 'critical',
+    mapX: 90, mapY: 315,
+    affectedStation: 1, affectedBatteries: [3, 5],
     trigger: '中心充电站 10kV 主进线跳闸，失去电源',
     duration: 90 * 60, // 90m
     impact: '所有在充电池无法继续充电，影响未来 4 小时调度基线',
@@ -139,7 +161,9 @@ export const SCENARIOS: Scenario[] = [
     id: 'typhoon',
     title: '极端天气 · 台风预警',
     tag: '不可抗力',
+    icon: '🌀',
     severity: 'extreme',
+    mapX: 380, mapY: 30,
     trigger: '气象局发布沧州地区台风黄色预警，风力 10 级，24h 内登陆',
     duration: 12 * 3600, // 12h
     impact: '运输车辆限行，电池物流中断，充电站并网可能受影响',
@@ -162,7 +186,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'market_crash',
     title: '现货价格闪崩',
     tag: '市场信号',
+    icon: '↘',
     severity: 'extreme',
+    mapX: 205, mapY: 105,
+    affectedStation: 2, affectedBatteries: [2, 6, 8],
     trigger: '现货市场负电价：系统告知 02:00–04:00 实时电价 −¥0.12/度',
     duration: 2 * 3600, // 2h
     impact: '全部调度窗口，充电成本优化目标函数重构',
@@ -184,7 +211,10 @@ export const SCENARIOS: Scenario[] = [
     id: 'comm_loss',
     title: '通讯链路中断',
     tag: '网络异常',
+    icon: '✕',
     severity: 'high',
+    mapX: 560, mapY: 195,
+    affectedPlatform: 2, affectedBatteries: [4],
     trigger: '主 4G 基站故障，云端与 β-02 电池失联',
     duration: 15 * 60, // 15m
     impact: '失联电池无法接收调度指令，GPS 位置更新停止',
