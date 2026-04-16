@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { api } from '../api/client';
+import { useToast } from '../components/Toast';
 
 void FONT_SANS;
 
@@ -615,6 +618,44 @@ const TabChargeLog = () => (
 const BatteryDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('basic');
   const st = STATUS_MAP[BATTERY.status as keyof typeof STATUS_MAP];
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const onExport = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ filename: string; message: string }>(`/api/batteries/${BATTERY.id}/export`);
+      toast.success(`${r.message} · ${r.filename}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onSwap = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ message: string; eta: string }>(`/api/batteries/${BATTERY.id}/swap`);
+      toast.success(`${r.message}（预计 ${r.eta}）`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onManualSchedule = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ message: string; eventId: string }>('/api/scheduling/manual', {
+        batteryId: BATTERY.id, reason: '电池详情页手动触发',
+      });
+      toast.success(`${r.message}（${r.eventId}）`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
 
   const tabs = [
     { id: 'basic', label: '基本信息' },
@@ -678,7 +719,7 @@ const BatteryDetailPage: React.FC = () => {
         {/* Page header with breadcrumb */}
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMut, marginBottom: 8 }}>
-            <span style={{ cursor: 'pointer' }}>电池管理</span>
+            <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>电池管理</span>
             <span>›</span>
             <span style={{ color: C.textSec }}>电池列表</span>
             <span>›</span>
@@ -686,7 +727,7 @@ const BatteryDetailPage: React.FC = () => {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span style={{
+              <span onClick={() => navigate(-1)} style={{
                 width: 36, height: 36, borderRadius: 8,
                 background: C.bgCard, border: `1px solid ${C.border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -703,16 +744,24 @@ const BatteryDetailPage: React.FC = () => {
               <span style={{ fontSize: 13, color: C.textSec }}>{BATTERY.location}</span>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <span style={{
+              <button onClick={onExport} disabled={busy} style={{
                 fontSize: 12, padding: '8px 16px', borderRadius: 7,
                 background: C.bgCard, color: C.textSec,
-                border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
-              }}>导出数据</span>
-              <span style={{
+                border: `1px solid ${C.border}`, cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
+                fontFamily: 'inherit',
+              }}>导出数据</button>
+              <button onClick={onSwap} disabled={busy} style={{
                 fontSize: 12, padding: '8px 16px', borderRadius: 7,
-                background: C.accent, color: '#fff', cursor: 'pointer', fontWeight: 600,
+                background: C.purple, color: '#fff', cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
+                boxShadow: `0 2px 6px ${C.purple}40`,
+                border: 'none', fontFamily: 'inherit',
+              }}>⚡ 立即换电</button>
+              <button onClick={onManualSchedule} disabled={busy} style={{
+                fontSize: 12, padding: '8px 16px', borderRadius: 7,
+                background: C.accent, color: '#fff', cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
                 boxShadow: `0 2px 6px ${C.accent}40`,
-              }}>+ 手动调度</span>
+                border: 'none', fontFamily: 'inherit',
+              }}>+ 手动调度</button>
             </div>
           </div>
         </div>

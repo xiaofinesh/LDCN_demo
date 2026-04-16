@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { api } from '../api/client';
+import { useToast } from '../components/Toast';
 
 void FONT_SANS;
 
@@ -279,6 +281,28 @@ const CostComparisonChart = () => {
 // ── Main ──
 const PricingReportPage: React.FC = () => {
   const [activeTimeTab, setActiveTimeTab] = useState('month');
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  // 切换时间区间时刷新汇总（仅触发后端，前端展示沿用 mockup 数据）
+  useEffect(() => {
+    api.get(`/api/reports/savings?range=${activeTimeTab}`).catch(() => {});
+  }, [activeTimeTab]);
+
+  const onExportPdf = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ filename: string; message: string }>('/api/reports/pdf');
+      toast.success(`${r.message}（${r.filename}）`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onAdvancedFilter = () => {
+    toast.info('高级筛选弹窗（演示占位）');
+  };
 
   return (
     <div>
@@ -365,14 +389,14 @@ const PricingReportPage: React.FC = () => {
                   }}>{l}</span>
               ))}
             </div>
-            <span style={{
+            <span onClick={onAdvancedFilter} style={{
               fontSize: 12, padding: '9px 16px', borderRadius: 7,
               background: C.bgCard, color: C.textSec,
               border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
             }}>📅 2026年4月</span>
-            <span style={{
+            <span onClick={onExportPdf} style={{
               fontSize: 12, padding: '9px 18px', borderRadius: 7,
-              background: C.accent, color: '#fff', cursor: 'pointer', fontWeight: 600,
+              background: C.accent, color: '#fff', cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
               boxShadow: `0 2px 6px ${C.accent}40`,
             }}>📄 导出 PDF</span>
           </div>

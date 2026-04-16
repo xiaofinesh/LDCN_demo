@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { api } from '../api/client';
+import { useToast } from '../components/Toast';
 
 void FONT_SANS;
 
@@ -285,6 +287,32 @@ const AlertRow: React.FC<{ alert: AlertData; selected: boolean; onClick: () => v
 
 // ── Alert Detail Panel ──
 const AlertDetail: React.FC<{ alert: AlertData }> = ({ alert }) => {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const run = async (label: string, fn: () => Promise<{ message?: string }>) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await fn();
+      toast.success(r.message ?? `${label} 已执行`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onCall = () => run('呼叫现场', () => api.post(`/api/alerts/${alert.id}/call`));
+  const onEmergency = () => run('启动应急预案', () => api.post(`/api/alerts/${alert.id}/emergency`));
+  const onAction = (action: string) =>
+    run(action, () => api.post(`/api/alerts/${alert.id}/actions/${encodeURIComponent(action)}`));
+  const onTransfer = () => run('转派', () => api.post(`/api/alerts/${alert.id}/transfer`, { to: '李调度员' }));
+  const onNote = () => run('备注', () => {
+    const text = window.prompt('请输入备注内容（演示）') ?? '';
+    if (!text) throw new Error('未输入内容，已取消');
+    return api.post(`/api/alerts/${alert.id}/note`, { text });
+  });
+  const onResolve = () => run('标记为已处置', () => api.post(`/api/alerts/${alert.id}/resolve`));
+
   const info = LEVELS[alert.level];
   const isActive = alert.status === 'processing';
 
@@ -343,12 +371,12 @@ const AlertDetail: React.FC<{ alert: AlertData }> = ({ alert }) => {
               background: 'rgba(255,255,255,0.2)', color: '#fff',
               border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', fontWeight: 700,
               whiteSpace: 'nowrap',
-            }}>📞 呼叫现场</span>
+            }} onClick={onCall}>📞 呼叫现场</span>
             <span style={{
               fontSize: 12, padding: '8px 16px', borderRadius: 7,
               background: '#fff', color: C.red, cursor: 'pointer', fontWeight: 700,
               whiteSpace: 'nowrap',
-            }}>启动应急预案</span>
+            }} onClick={onEmergency}>启动应急预案</span>
           </div>
         </div>
       )}
@@ -410,7 +438,7 @@ const AlertDetail: React.FC<{ alert: AlertData }> = ({ alert }) => {
                     fontSize: 12, fontWeight: 800, flexShrink: 0,
                   }}>{i + 1}</div>
                   <span style={{ fontSize: 13, color: C.text, flex: 1 }}>{action}</span>
-                  <span style={{
+                  <span onClick={() => onAction(action)} style={{
                     fontSize: 11, padding: '4px 10px', borderRadius: 4,
                     background: C.accent, color: '#fff', cursor: 'pointer', fontWeight: 700,
                   }}>执行</span>
@@ -474,17 +502,17 @@ const AlertDetail: React.FC<{ alert: AlertData }> = ({ alert }) => {
           display: 'flex', gap: 10, justifyContent: 'flex-end',
           background: C.bgCardAlt,
         }}>
-          <span style={{
+          <span onClick={onTransfer} style={{
             fontSize: 12, padding: '9px 16px', borderRadius: 7,
             background: C.bgCard, color: C.textSec,
             border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
           }}>转派他人</span>
-          <span style={{
+          <span onClick={onNote} style={{
             fontSize: 12, padding: '9px 16px', borderRadius: 7,
             background: C.bgCard, color: C.textSec,
             border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
           }}>添加备注</span>
-          <span style={{
+          <span onClick={onResolve} style={{
             fontSize: 12, padding: '9px 20px', borderRadius: 7,
             background: C.accent, color: '#fff', cursor: 'pointer', fontWeight: 600,
             boxShadow: `0 2px 6px ${C.accent}40`,
@@ -549,6 +577,31 @@ const AlertTrendChart = () => {
 const AlertsPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState('ALT-2026041614002');
   const [filterLevel, setFilterLevel] = useState('all');
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const onExportLog = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ filename: string; rows: number }>('/api/alerts/export');
+      toast.success(`告警日志已导出（${r.rows} 条）· ${r.filename}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onShowRules = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.get<{ rules: Array<{ id: string; level: string; cond: string; notify: string }> }>('/api/alerts/rules/list');
+      toast.info(`已加载 ${r.rules.length} 条告警规则（参见控制台）`);
+      console.table(r.rules);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
   const [filterStatus, setFilterStatus] = useState('all');
 
   const selected = ALERTS.find(a => a.id === selectedId) || ALERTS[0];
@@ -636,12 +689,12 @@ const AlertsPage: React.FC = () => {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <span style={{
+            <span onClick={onExportLog} style={{
               fontSize: 12, padding: '8px 16px', borderRadius: 7,
               background: C.bgCard, color: C.textSec,
-              border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
+              border: `1px solid ${C.border}`, cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
             }}>导出日志</span>
-            <span style={{
+            <span onClick={onShowRules} style={{
               fontSize: 12, padding: '8px 16px', borderRadius: 7,
               background: C.bgCard, color: C.textSec,
               border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,

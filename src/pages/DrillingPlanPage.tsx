@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { api } from '../api/client';
+import { useToast } from '../components/Toast';
 
 // ── Form components ──
 
@@ -316,7 +319,73 @@ const AIPreview: React.FC = () => {
 };
 
 // ── Main Form Page ──
+interface EstimateResult {
+  dailyKwh: number;
+  totalDays: number;
+  totalKwh: number;
+  baselineCost: number;
+  optimizedCost: number;
+  saving: number;
+  savingPct: number;
+  recommendedBatteries: number;
+  recommendedStation: string;
+  assumptions: string[];
+}
+
 const DrillingPlanPage: React.FC = () => {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [estimate, setEstimate] = useState<EstimateResult | null>(null);
+  const [rigType, setRigType] = useState('中型钻机 HXY-3000');
+  const [depthM, setDepthM] = useState(2500);
+  const [days, setDays] = useState(30);
+  const [hours, setHours] = useState(18);
+
+  // 初次加载 + 参数变化时拉取估算
+  useEffect(() => {
+    const t = setTimeout(() => {
+      api.post<{ estimate: EstimateResult }>('/api/drilling-plans/estimate', {
+        rigType, depthM, days, dailyRunHours: hours,
+      })
+        .then((r) => setEstimate(r.estimate))
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [rigType, depthM, days, hours]);
+
+  const submitPlan = async (status: 'draft' | 'submitted') => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ plan: { id: string }; message: string }>(
+        `/api/drilling-plans?status=${status}`,
+        {
+          team: '钻井三队', wellName: 'JH-018',
+          rigType, expectedDailyKwh: estimate?.dailyKwh ?? 11302,
+        },
+      );
+      toast.success(`${r.message}`);
+      if (status === 'submitted') navigate('/');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const onSelectFile = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ filename: string; sizeKB: number; message: string }>(
+        '/api/uploads', { filename: '钻井合同附件_JH-018.pdf', sizeKB: 256 },
+      );
+      toast.success(r.message);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally { setBusy(false); }
+  };
+  void rigType; void setRigType; void depthM; void setDepthM;
+  void days; void setDays; void hours; void setHours; void estimate;
   // Reserved for future interactivity; ensures useState import is used.
   const [selectedTimeSlots] = useState<number[]>([2, 3, 4]);
 
@@ -346,22 +415,25 @@ const DrillingPlanPage: React.FC = () => {
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <span style={{
+              <button onClick={() => navigate(-1)} disabled={busy} style={{
                 fontSize: 13, padding: '10px 18px', borderRadius: 7,
                 background: C.bgCard, color: C.textSec,
-                border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
-              }}>取消</span>
-              <span style={{
+                border: `1px solid ${C.border}`, cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
+                fontFamily: 'inherit',
+              }}>取消</button>
+              <button onClick={() => submitPlan('draft')} disabled={busy} style={{
                 fontSize: 13, padding: '10px 18px', borderRadius: 7,
                 background: C.bgCard, color: C.accent,
-                border: `1px solid ${C.accent}`, cursor: 'pointer', fontWeight: 600,
-              }}>保存草稿</span>
-              <span style={{
+                border: `1px solid ${C.accent}`, cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
+                fontFamily: 'inherit',
+              }}>保存草稿</button>
+              <button onClick={() => submitPlan('submitted')} disabled={busy} style={{
                 fontSize: 13, padding: '10px 22px', borderRadius: 7,
                 background: C.accent, color: '#fff',
-                cursor: 'pointer', fontWeight: 600,
+                cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
                 boxShadow: `0 2px 6px ${C.accent}40`,
-              }}>✓ 提交计划</span>
+                border: 'none', fontFamily: 'inherit',
+              }}>✓ 提交计划</button>
             </div>
           </div>
         </div>
@@ -544,11 +616,12 @@ const DrillingPlanPage: React.FC = () => {
                     钻井设计文件、用电申请书等 · 支持 PDF/Word/Excel · 单文件 ≤ 20MB
                   </div>
                 </div>
-                <span style={{
+                <button onClick={onSelectFile} disabled={busy} style={{
                   fontSize: 12, padding: '8px 16px', borderRadius: 6,
                   background: C.bgCard, color: C.textSec,
-                  border: `1px solid ${C.border}`, cursor: 'pointer', fontWeight: 600,
-                }}>选择文件</span>
+                  border: `1px solid ${C.border}`, cursor: busy ? 'wait' : 'pointer', fontWeight: 600,
+                  fontFamily: 'inherit',
+                }}>选择文件</button>
               </div>
             </div>
           </div>
