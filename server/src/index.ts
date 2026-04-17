@@ -35,7 +35,12 @@ app.use(
 app.use(express.json({ limit: '5mb' }));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, ts: new Date().toISOString() });
+  res.json({
+    ok: true,
+    ts: new Date().toISOString(),
+    simulation: 'running',
+    batteries: 3,
+  });
 });
 
 app.use('/api/dashboard', dashboard);
