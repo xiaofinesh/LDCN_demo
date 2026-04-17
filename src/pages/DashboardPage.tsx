@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { C, FONT_MONO } from '../constants/tokens';
-import { MAP_BASE64 } from '../assets/mapBase64';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 
@@ -247,9 +246,12 @@ const GanttBar: React.FC<GanttBarProps> = ({ label, start, end, color, row }) =>
 
 const RealMap: React.FC = () => {
   const [layer, setLayer] = useState<'satellite' | 'road' | 'label'>('road');
+  const [mapSrc, setMapSrc] = useState<string | null>(null);
   useEffect(() => {
     api.get<{ layer: 'satellite' | 'road' | 'label' }>('/api/map/layer')
       .then((r) => setLayer(r.layer)).catch(() => {});
+    // 动态加载地图底图（52KB base64），避免阻塞其他页面
+    import('../assets/mapBase64').then((m) => setMapSrc(m.MAP_BASE64));
   }, []);
   const onLayerClick = (label: '卫星' | '路网' | '标注') => {
     const map: Record<string, 'satellite' | 'road' | 'label'> = {
@@ -268,17 +270,31 @@ const RealMap: React.FC = () => {
       border: `1px solid ${C.border}`,
       background: '#e8eef4',
     }}>
-      {/* Real map background */}
-      <img
-        src={MAP_BASE64}
-        alt="任丘-河间区域地图"
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-        }}
-      />
+      {/* Real map background (动态加载) */}
+      {mapSrc ? (
+        <img
+          src={mapSrc}
+          alt="任丘-河间区域地图"
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, #e8eef4 0%, #dbe3ec 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: C.textMut, fontSize: 12, fontFamily: FONT_MONO,
+          }}
+        >
+          地图加载中…
+        </div>
+      )}
 
       {/* SVG overlay with markers */}
       <svg viewBox="0 0 900 689" style={{
