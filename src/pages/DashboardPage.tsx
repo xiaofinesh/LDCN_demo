@@ -195,12 +195,12 @@ const BatteryCard: React.FC<{ b: BatteryData; onOpen: () => void }> = ({ b, onOp
   );
 };
 
-const PriceTimeline = () => (
+const PriceTimeline: React.FC<{ currentHour: number }> = ({ currentHour }) => (
   <div>
     <div style={{ display: 'flex', gap: 1, height: 40, borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
       {HOURS_TIER.map((tier, i) => {
         const info = TIER_INFO[tier];
-        const isCurrent = i === CURRENT_HOUR;
+        const isCurrent = i === Math.floor(currentHour);
         return (
           <div key={i} style={{
             flex: 1, background: isCurrent ? info.color : `${info.color}25`,
@@ -493,10 +493,54 @@ const RealMap: React.FC = () => {
 };
 
 // ── Main ──
+// ── API response type ──
+interface DashboardData {
+  simTime: string;
+  simHour: number;
+  kpi: {
+    supplyStatus: string;
+    supplyDetail: string;
+    power: number;
+    onlineCount: string;
+    dischargePower: number;
+    chargePower: number;
+    activeAlerts: number;
+  };
+  tier: { key: string; label: string; price: number };
+  batteries: BatteryData[];
+  activity: Array<{ level: AlertLevel; time: string; msg: string }>;
+  hourTiers: Array<{ hour: number; tier: string; label: string; price: number }>;
+  energy: { cumulative: number; cost: number; baseline: number; savings: number };
+  schedule: Record<number, Array<{ start: number; end: number; status: string; label: string }>>;
+}
+
 const DashboardPage: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [data, setData] = useState<DashboardData | null>(null);
+
+  useEffect(() => {
+    const fetch = () =>
+      api.get<DashboardData & { ok: boolean }>('/api/dashboard')
+        .then((r) => setData(r))
+        .catch(() => {});
+    fetch();
+    const iv = setInterval(fetch, 2000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Use live data or fallback to hardcoded
+  const liveBatteries = data?.batteries ?? BATTERIES;
+  const liveAlerts = data?.activity ?? ALERTS;
+  const liveHour = data?.simHour ?? CURRENT_HOUR;
+  const liveTierLabel = data?.tier?.label ?? TIER_INFO[HOURS_TIER[CURRENT_HOUR]].label;
+  const liveTierPrice = data?.tier?.price ?? TIER_INFO[HOURS_TIER[CURRENT_HOUR]].price;
+  const liveTierColor = (() => {
+    const k = data?.tier?.key;
+    if (k && k in TIER_INFO) return TIER_INFO[k as TierKey].color;
+    return TIER_INFO[HOURS_TIER[CURRENT_HOUR]].color;
+  })();
 
   const onExport = async () => {
     if (busy) return;
@@ -613,16 +657,16 @@ const DashboardPage: React.FC = () => {
 
         {/* KPI Row */}
         <div style={{ display: 'flex', gap: 14, marginBottom: 20 }}>
-          <KPICard icon="⚡" label="供电状态" value="正常" unit="" color={C.accent}
-            sub="α-01 供电中 · 预计可持续至 17:30" />
-          <KPICard icon="◎" label="实时功率" value="680" unit="kW" color={C.blue}
+          <KPICard icon="⚡" label="供电状态" value={data?.kpi.supplyStatus ?? '正常'} unit="" color={C.accent}
+            sub={data?.kpi.supplyDetail ?? '加载中...'} />
+          <KPICard icon="◎" label="实时功率" value={data?.kpi.power ?? '—'} unit="kW" color={C.blue}
             sub="平台 A-01 钻井负荷" />
-          <KPICard icon="▦" label="电池在线" value="3/3" unit="" color={C.cyan}
-            sub="供电 1 · 待命 1 · 充电 1" />
-          <KPICard icon="↓" label="实时放电功率" value="680" unit="kW" color={C.orange}
-            sub="α-01 → 平台 A-01 · 持续供电中" />
-          <KPICard icon="△" label="活跃告警" value="1" unit="" color={C.red}
-            sub="γ-03 充电功率异常" />
+          <KPICard icon="▦" label="电池在线" value={data?.kpi.onlineCount ?? '—'} unit="" color={C.cyan}
+            sub={`供电 ${liveBatteries.filter(b => b.status === 'supplying').length} · 待命 ${liveBatteries.filter(b => b.status === 'standby').length} · 充电 ${liveBatteries.filter(b => b.status === 'charging').length}`} />
+          <KPICard icon="↓" label="实时放电功率" value={data?.kpi.dischargePower ?? '—'} unit="kW" color={C.orange}
+            sub={liveBatteries.find(b => b.status === 'supplying')?.name ?? '—'} />
+          <KPICard icon="△" label="活跃告警" value={data?.kpi.activeAlerts ?? 0} unit="" color={C.red}
+            sub={liveAlerts[0]?.msg ?? '无活跃告警'} />
         </div>
 
         {/* Main grid: Map + Side panel */}
@@ -663,7 +707,7 @@ const DashboardPage: React.FC = () => {
               <span>电池状态</span>
               <span style={{ fontSize: 11, color: C.textMut, fontWeight: 500 }}>容量 5,000 kWh/块</span>
             </div>
-            {BATTERIES.map(b => <BatteryCard key={b.id} b={b} onOpen={() => navigate(`/battery/${b.id}`)} />)}
+            {liveBatteries.map(b => <BatteryCard key={b.id} b={b} onOpen={() => navigate(`/battery/${b.id}`)} />)}
 
             {/* Activity feed */}
             <div style={{ marginTop: 6 }}>
@@ -674,7 +718,7 @@ const DashboardPage: React.FC = () => {
                 <span>动态消息</span>
                 <span onClick={() => navigate('/alerts')} style={{ fontSize: 11, color: C.accent, cursor: 'pointer', fontWeight: 600 }}>查看全部 →</span>
               </div>
-              {ALERTS.map((a, i) => {
+              {liveAlerts.map((a, i) => {
                 const colors = {
                   warn: C.orange, ok: C.accent, info: C.blue,
                 };
@@ -721,13 +765,13 @@ const DashboardPage: React.FC = () => {
               </div>
               <div style={{
                 fontSize: 13, padding: '6px 14px', borderRadius: 7,
-                background: TIER_INFO[HOURS_TIER[CURRENT_HOUR]].color,
+                background: liveTierColor,
                 color: '#fff', fontWeight: 700, fontFamily: FONT_MONO,
               }}>
-                当前 ¥{TIER_INFO[HOURS_TIER[CURRENT_HOUR]].price}/度
+                {liveTierLabel} ¥{liveTierPrice.toFixed(4)}/度
               </div>
             </div>
-            <PriceTimeline />
+            <PriceTimeline currentHour={liveHour} />
           </div>
 
           {/* Gantt */}
@@ -781,7 +825,7 @@ const DashboardPage: React.FC = () => {
 
                   {/* Now line */}
                   <div style={{
-                    position: 'absolute', left: `${(CURRENT_HOUR/24)*100}%`, top: -2, bottom: -2,
+                    position: 'absolute', left: `${(liveHour/24)*100}%`, top: -2, bottom: -2,
                     borderLeft: `2px solid ${C.accent}`, zIndex: 10,
                   }}>
                     <div style={{
