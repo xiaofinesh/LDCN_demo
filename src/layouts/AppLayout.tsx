@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { api } from '../api/client';
 
 interface NavItem {
   to: string;
@@ -17,6 +18,22 @@ const NAV: NavItem[] = [
 ];
 
 const AppLayout: React.FC = () => {
+  const [simTime, setSimTime] = useState('2026-04-16 00:00');
+  const [simDay, setSimDay] = useState(1);
+
+  useEffect(() => {
+    const fetchTime = () =>
+      api.get<{ simTime: string; simDay: number }>('/api/health')
+        .then((r) => {
+          setSimTime(r.simTime.replace('T', ' ').slice(0, 16));
+          setSimDay(r.simDay);
+        })
+        .catch(() => {});
+    fetchTime();
+    const iv = setInterval(fetchTime, 2000);
+    return () => clearInterval(iv);
+  }, []);
+
   return (
     <div
       style={{
@@ -112,8 +129,14 @@ const AppLayout: React.FC = () => {
             borderLeft: `1px solid ${C.border}`,
           }}
         >
-          <span style={{ fontSize: 12, color: C.textSec, fontFamily: FONT_MONO }}>
-            2026-04-16 14:32
+          <span style={{ fontSize: 12, color: C.accent, fontFamily: FONT_MONO, fontWeight: 700 }}>
+            {simTime}
+          </span>
+          <span style={{
+            fontSize: 9, color: C.textMut, fontFamily: FONT_MONO,
+            padding: '2px 6px', background: C.bgSubtle, borderRadius: 4,
+          }}>
+            D-{simDay} · 60×
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div

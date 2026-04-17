@@ -9,7 +9,7 @@ import drillingPlans from './routes/drillingPlans.js';
 import reports from './routes/reports.js';
 import map from './routes/map.js';
 import uploads from './routes/uploads.js';
-import { startSimulation } from './simulate.js';
+import { startEngine, getEngine } from './engine.js';
 import { ApiError } from './validate.js';
 
 const app = express();
@@ -35,11 +35,15 @@ app.use(
 app.use(express.json({ limit: '5mb' }));
 
 app.get('/api/health', (_req, res) => {
+  const snap = getEngine().snapshot();
   res.json({
     ok: true,
     ts: new Date().toISOString(),
     simulation: 'running',
-    batteries: 3,
+    simTime: snap.simTime,
+    simHour: snap.simHour,
+    simDay: snap.simDay,
+    batteries: snap.batteries.length,
   });
 });
 
@@ -70,8 +74,8 @@ app.use(
   },
 );
 
-// 启动 SOC 漂移模拟，让 demo 数据"活"起来
-startSimulation();
+// 启动统一模拟引擎：1 real second = 1 sim minute, 24 real minutes = 1 sim day
+startEngine();
 
 app.listen(PORT, () => {
   console.log(`[server] listening on http://127.0.0.1:${PORT}`);
