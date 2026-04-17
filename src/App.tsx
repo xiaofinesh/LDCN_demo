@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast';
 import PageSkeleton from './components/PageSkeleton';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const BatteryListPage = lazy(() => import('./pages/BatteryListPage'));
 const BatteryDetailPage = lazy(() => import('./pages/BatteryDetailPage'));
 const DrillingPlanPage = lazy(() => import('./pages/DrillingPlanPage'));
 const AlertsPage = lazy(() => import('./pages/AlertsPage'));
@@ -18,7 +19,8 @@ const App: React.FC = () => {
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<Suspense fallback={<PageSkeleton />}><DashboardPage /></Suspense>} />
-            <Route path="/battery" element={<Suspense fallback={<PageSkeleton />}><BatteryDetailPage /></Suspense>} />
+            <Route path="/battery" element={<Suspense fallback={<PageSkeleton />}><BatteryListPage /></Suspense>} />
+            <Route path="/battery/:id" element={<Suspense fallback={<PageSkeleton />}><BatteryDetailPage /></Suspense>} />
             <Route path="/drilling-plan" element={<Suspense fallback={<PageSkeleton />}><DrillingPlanPage /></Suspense>} />
             <Route path="/alerts" element={<Suspense fallback={<PageSkeleton />}><AlertsPage /></Suspense>} />
             <Route path="/pricing-report" element={<Suspense fallback={<PageSkeleton />}><PricingReportPage /></Suspense>} />

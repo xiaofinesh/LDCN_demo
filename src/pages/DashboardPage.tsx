@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 
 // ── Types ──
 type BatteryStatus = 'supplying' | 'standby' | 'charging' | 'to_station';
-type TierKey = 'peak' | 'flat' | 'valley' | 'deepValley';
+type TierKey = 'spike' | 'peak' | 'flat' | 'valley' | 'deepValley';
 type AlertLevel = 'info' | 'warn' | 'ok';
 
 interface BatteryData {
@@ -33,18 +33,24 @@ const STATUS_MAP: Record<BatteryStatus, { label: string; color: string; bg: stri
   to_station: { label: '运输中', color: C.orange, bg: C.orangeLight, icon: '→' },
 };
 
-// ── Price tiers ──
+// ── 五档分时电价 · 春季（河北电网 1-10kV 单一制） ──
 const HOURS_TIER: TierKey[] = [
-  'flat','flat','flat','valley','valley','valley','valley',
-  'flat','flat','flat','flat','valley','deepValley','deepValley',
-  'deepValley','flat','peak','peak','peak','peak','peak',
-  'peak','peak','peak'
+  'flat','flat','flat',                       // 00-02 平段
+  'valley','valley','valley','valley',        // 03-06 低谷
+  'flat','flat','flat','flat',                // 07-10 平段
+  'valley',                                   // 11    低谷
+  'deepValley','deepValley','deepValley',     // 12-14 深谷
+  'flat',                                     // 15    平段
+  'peak','peak','peak',                       // 16-18 高峰
+  'spike','spike',                            // 19-20 尖峰
+  'peak','peak','peak',                       // 21-23 高峰
 ];
 const TIER_INFO: Record<TierKey, { label: string; color: string; price: number }> = {
-  peak: { label: '高峰', color: '#ea580c', price: 0.938 },
-  flat: { label: '平段', color: '#2563eb', price: 0.664 },
-  valley: { label: '低谷', color: '#0891b2', price: 0.390 },
-  deepValley: { label: '深谷', color: '#0d9b6c', price: 0.367 },
+  spike:      { label: '尖峰', color: '#dc2626', price: 1.0709 },
+  peak:       { label: '高峰', color: '#ea580c', price: 0.9380 },
+  flat:       { label: '平段', color: '#2563eb', price: 0.6642 },
+  valley:     { label: '低谷', color: '#0891b2', price: 0.3904 },
+  deepValley: { label: '深谷', color: '#0d9b6c', price: 0.3669 },
 };
 
 const CURRENT_HOUR = 14;
@@ -657,7 +663,7 @@ const DashboardPage: React.FC = () => {
               <span>电池状态</span>
               <span style={{ fontSize: 11, color: C.textMut, fontWeight: 500 }}>容量 5,000 kWh/块</span>
             </div>
-            {BATTERIES.map(b => <BatteryCard key={b.id} b={b} onOpen={() => navigate(`/battery?id=${b.id}`)} />)}
+            {BATTERIES.map(b => <BatteryCard key={b.id} b={b} onOpen={() => navigate(`/battery/${b.id}`)} />)}
 
             {/* Activity feed */}
             <div style={{ marginTop: 6 }}>
