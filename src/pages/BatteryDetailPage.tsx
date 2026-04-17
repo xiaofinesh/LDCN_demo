@@ -1,29 +1,46 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { C, FONT_MONO } from '../constants/tokens';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
 
+// ── Types ──
+interface BatteryServerData {
+  id: number; name: string; serial: string;
+  soc: number; soh: number; status: string; location: string;
+  power: number; voltage: number; current: number; temp: number;
+  capacity: number; cycles: number; monthlySaving: number;
+  installedAt: string; lastSwap: string;
+}
 
-// ── Current battery data ──
-const BATTERY = {
-  id: 1, name: 'α-01',
-  serial: 'BAT-A01-2025-0042',
-  model: 'CATL EnerC 5MWh',
-  capacity: 5000, // kWh
-  manufactured: '2025-08-15',
-  installed: '2025-09-20',
-  soc: 62,
-  status: 'supplying',
-  location: '钻井平台 A-01 · 任丘市于村乡',
-  voltage: 1024.5,
-  current: -664,
-  power: -680,
-  temp: 32.5,
-  cycleCount: 187,
-  health: 98.4,
-  monthSavings: 14820, // ¥
-  estRemainingHours: 3.5,
+interface BatteryPageData {
+  id: number; name: string; serial: string; model: string;
+  capacity: number; manufactured: string; installed: string;
+  soc: number; status: string; location: string;
+  voltage: number; current: number; power: number; temp: number;
+  cycleCount: number; health: number; monthSavings: number;
+  estRemainingHours: number;
+}
+
+function toBatteryPageData(s: BatteryServerData): BatteryPageData {
+  return {
+    id: s.id, name: s.name, serial: s.serial, model: 'CATL EnerC 5MWh',
+    capacity: s.capacity, manufactured: '2025-08-15', installed: s.installedAt,
+    soc: Math.round(s.soc), status: s.status, location: s.location,
+    voltage: s.voltage, current: s.current, power: s.power, temp: s.temp,
+    cycleCount: s.cycles, health: s.soh, monthSavings: s.monthlySaving,
+    estRemainingHours: Math.max(1, Math.round(s.soc / 18)),
+  };
+}
+
+// ── Module-level battery ref (updated by main component state) ──
+// Sub-components (BatteryShape, TabBasic, TabAI) read this at render time.
+let BATTERY: BatteryPageData = {
+  id: 1, name: 'α-01', serial: 'BAT-A01-2025-0042', model: 'CATL EnerC 5MWh',
+  capacity: 5000, manufactured: '2025-08-15', installed: '2025-09-20',
+  soc: 62, status: 'supplying', location: '钻井平台 A-01 · 任丘市于村乡',
+  voltage: 1024.5, current: -664, power: -680, temp: 32.5,
+  cycleCount: 187, health: 98.4, monthSavings: 14820, estRemainingHours: 3.5,
 };
 
 const STATUS_MAP = {
@@ -623,12 +640,26 @@ const TabChargeLog = () => (
 
 // ── Main Battery Detail Page ──
 const BatteryDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState('basic');
   const [historyRange, setHistoryRange] = useState('今日');
-  const st = STATUS_MAP[BATTERY.status as keyof typeof STATUS_MAP];
+  const [, forceRender] = useState(0);
   const navigate = useNavigate();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    const load = () =>
+      api.get<{ battery: BatteryServerData }>(`/api/batteries/${id}`)
+        .then((r) => { BATTERY = toBatteryPageData(r.battery); forceRender((n) => n + 1); })
+        .catch(() => {});
+    load().catch(() => toast.error(`电池 #${id} 数据加载失败`));
+    const iv = setInterval(load, 5000);
+    return () => clearInterval(iv);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const st = STATUS_MAP[BATTERY.status as keyof typeof STATUS_MAP];
 
   const onExport = async () => {
     if (busy) return;
@@ -679,9 +710,9 @@ const BatteryDetailPage: React.FC = () => {
         {/* Page header with breadcrumb */}
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textMut, marginBottom: 8 }}>
-            <span onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>电池管理</span>
+            <span onClick={() => navigate('/battery')} style={{ cursor: 'pointer' }}>电池管理</span>
             <span>›</span>
-            <span style={{ color: C.textSec }}>电池列表</span>
+            <span onClick={() => navigate('/battery')} style={{ cursor: 'pointer', color: C.textSec }}>电池列表</span>
             <span>›</span>
             <span style={{ color: C.text, fontWeight: 600 }}>{BATTERY.name} 详情</span>
           </div>
