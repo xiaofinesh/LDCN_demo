@@ -6,9 +6,10 @@
 
 | 层 | 技术 |
 |---|---|
-| 前端 | Vite 5 · React 18 · TypeScript 5 · React Router 6 |
-| 后端 | Node.js · Express 4 · TypeScript 5 |
+| 前端 | Vite 5 · React 18 · TypeScript 5 · React Router 6 · Code Splitting (React.lazy) |
+| 后端 | Node.js · Express 4 · TypeScript 5 · zod 3 |
 | 风格 | 浅色主题 · 内联样式 · 真实地理底图 |
+| 工程 | Prettier · Strict TS · CORS allowlist |
 
 ## 开发
 
@@ -98,6 +99,21 @@ cd server && npm run build  # 后端 → server/dist/
 | **运营报表** 📄 导出 PDF | `POST /api/reports/pdf` |
 
 所有按钮点击均通过 `useToast()` 给出成功/失败反馈。
+
+## 工程优化
+
+**Bundle 尺寸** — 从单 bundle 320KB 降为按需分包：
+
+| 资源 | gzip |
+|---|---|
+| 主包 `index.js` | 57 KB |
+| `DashboardPage` | 6 KB（含按需加载地图底图 37 KB） |
+| 其他 4 个页面 | 5~7 KB 各自 |
+| `NotFoundPage` | 0.8 KB |
+
+首屏加载非主控台路由：**57 + 5~7 ≈ 63 KB**（旧版 120 KB，节省 ~47%）。
+
+**后端** — 使用 zod 对请求体/查询参数严格校验，非法请求 400 + fieldErrors 明细；CORS 白名单仅允许 `127.0.0.1|localhost:5173|4173`；SOC 漂移模拟器每 5 秒更新电池状态，让 demo 数据"活"起来。
 
 ## 备注
 

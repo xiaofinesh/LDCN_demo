@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { C, FONT_MONO } from '../constants/tokens';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
-
-void FONT_SANS;
 
 
 // ── Price tiers ──
@@ -122,7 +120,6 @@ const DailySavingsChart: React.FC = () => {
   const W = 820, H = 220;
   const padL = 46, padR = 20, padT = 20, padB = 36;
   const maxSaved = Math.max(...DAILY_SAVINGS.map(d => d.saved));
-  void Math.max(...DAILY_SAVINGS.map(d => d.pct));
   const barW = (W - padL - padR) / DAILY_SAVINGS.length - 4;
 
   return (
@@ -308,55 +305,7 @@ const PricingReportPage: React.FC = () => {
 
   return (
     <div>
-      {/* Top Nav removed */}
-      <div style={{ display: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 9,
-            background: `linear-gradient(135deg, ${C.accent}, ${C.blue})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 19, fontWeight: 900, color: '#fff',
-            boxShadow: `0 2px 8px ${C.accent}40`,
-          }}>⚡</div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.3, color: C.text }}>
-              电池智能调度平台
-            </div>
-            <div style={{ fontSize: 10, color: C.textMut, marginTop: 1, letterSpacing: 1 }}>
-              LDCN · v1.0
-            </div>
-          </div>
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        {['主控台', '电池管理', '充电站', '钻井队', '告警中心', '运营报表', '系统管理'].map((item, i) => (
-          <span key={item} style={{
-            fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            color: i === 5 ? C.accent : C.textSec,
-            padding: '8px 14px', borderRadius: 7,
-            background: i === 5 ? C.accentLight : 'transparent',
-          }}>{item}</span>
-        ))}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginLeft: 8, paddingLeft: 16, borderLeft: `1px solid ${C.border}` }}>
-          <span style={{ fontSize: 12, color: C.textSec, fontFamily: FONT_MONO }}>2026-04-16 14:32</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, color: '#fff', fontWeight: 800,
-            }}>管</div>
-            <div>
-              <div style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>张管理员</div>
-              <div style={{ fontSize: 10, color: C.textMut }}>客户管理员</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
+{/* Content */}
       <div style={{ padding: '24px 28px', maxWidth: 1480, margin: '0 auto' }}>
         {/* Page header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
