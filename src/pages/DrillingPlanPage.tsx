@@ -44,9 +44,10 @@ interface InputProps {
   value?: string;
   placeholder?: string;
   suffix?: string;
+  onChange?: (value: string) => void;
 }
 
-const Input: React.FC<InputProps> = ({ value, placeholder, suffix }) => (
+const Input: React.FC<InputProps> = ({ value, placeholder, suffix, onChange }) => (
   <div style={{
     display: 'flex', alignItems: 'center',
     background: C.bgCard,
@@ -56,7 +57,7 @@ const Input: React.FC<InputProps> = ({ value, placeholder, suffix }) => (
   }}>
     <input
       type="text"
-      defaultValue={value}
+      {...(onChange ? { value: value ?? '', onChange: (e) => onChange(e.target.value) } : { defaultValue: value })}
       placeholder={placeholder}
       style={{
         flex: 1, border: 'none', outline: 'none',
@@ -173,10 +174,15 @@ const LocationPicker: React.FC<{ onPick?: () => void }> = ({ onPick }) => (
 );
 
 // ── AI Preview Panel (right side) ──
-const AIPreview: React.FC = () => {
+const AIPreview: React.FC<{ estimate: EstimateResult | null }> = ({ estimate }) => {
+  const daily = estimate?.dailyKwh ?? 12400;
+  const opt = estimate?.optimizedCost ?? 6820;
+  const base = estimate?.baselineCost ?? 8680;
+  const saving = estimate?.saving ?? 1860;
+  const pct = estimate?.savingPct ?? 21.4;
   const resourceRows: Array<[string, string]> = [
-    ['所需电池数量', '3 块 + 1 备用'],
-    ['主充电站', '河间充电站'],
+    ['所需电池数量', `${estimate?.recommendedBatteries ?? 3} 块 + 1 备用`],
+    ['主充电站', estimate?.recommendedStation ?? '河间充电站'],
     ['单日充电趟次', '≈ 2-3 次'],
     ['运输总里程', '≈ 180 km/天'],
   ];
@@ -225,7 +231,7 @@ const AIPreview: React.FC = () => {
           <span style={{
             fontSize: 26, fontWeight: 900, color: C.text,
             fontFamily: FONT_MONO, letterSpacing: -0.5,
-          }}>12,400</span>
+          }}>{daily.toLocaleString()}</span>
           <span style={{ fontSize: 12, color: C.textMut, fontWeight: 500 }}>kWh/日</span>
         </div>
         <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>
@@ -291,14 +297,14 @@ const AIPreview: React.FC = () => {
           <span style={{
             fontSize: 18, fontWeight: 900, color: C.accent,
             fontFamily: FONT_MONO,
-          }}>¥ 6,820<span style={{ fontSize: 10, color: C.textMut, marginLeft: 4 }}>/日</span></span>
+          }}>¥ {opt.toLocaleString()}<span style={{ fontSize: 10, color: C.textMut, marginLeft: 4 }}>/日</span></span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 12, color: C.textMut, textDecoration: 'line-through' }}>无优化基准</span>
           <span style={{
             fontSize: 14, fontWeight: 700, color: C.textMut,
             fontFamily: FONT_MONO, textDecoration: 'line-through',
-          }}>¥ 8,680<span style={{ fontSize: 10, marginLeft: 4 }}>/日</span></span>
+          }}>¥ {base.toLocaleString()}<span style={{ fontSize: 10, marginLeft: 4 }}>/日</span></span>
         </div>
         <div style={{
           marginTop: 10, padding: '8px 12px',
@@ -309,7 +315,7 @@ const AIPreview: React.FC = () => {
           <span style={{
             fontSize: 14, fontWeight: 900, color: C.accent,
             fontFamily: FONT_MONO,
-          }}>¥ 1,860/日 · 21.4%</span>
+          }}>¥ {saving.toLocaleString()}/日 · {pct.toFixed(1)}%</span>
         </div>
       </div>
 
@@ -353,10 +359,10 @@ const DrillingPlanPage: React.FC = () => {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [estimate, setEstimate] = useState<EstimateResult | null>(null);
-  const [rigType, setRigType] = useState('中型钻机 HXY-3000');
-  const [depthM, setDepthM] = useState(2500);
-  const [days, setDays] = useState(30);
-  const [hours, setHours] = useState(18);
+  const rigType = 'ZJ40 (4000米钻机)';
+  const [depthM, setDepthM] = useState(3200);
+  const days = 15;
+  const hours = 18;
 
   // 初次加载 + 参数变化时拉取估算
   useEffect(() => {
@@ -414,9 +420,6 @@ const DrillingPlanPage: React.FC = () => {
       toast.error((e as Error).message);
     } finally { setBusy(false); }
   };
-  void rigType; void setRigType; void depthM; void setDepthM;
-  void days; void setDays; void hours; void setHours; void estimate;
-  // Reserved for future interactivity; ensures useState import is used.
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([2, 3, 4]);
   const toggleTimeSlot = (i: number) => {
     setSelectedTimeSlots((prev) =>
@@ -578,10 +581,18 @@ const DrillingPlanPage: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 <FormField label="钻机型号" required>
-                  <Select value="ZJ40 (4000米钻机)" onDemo={() => showDemo('钻机型号')} />
+                  <Select value={rigType} onDemo={() => showDemo('钻机型号')} />
                 </FormField>
                 <FormField label="预估钻井深度" required>
-                  <Input value="3,200" placeholder="深度数值" suffix="米" />
+                  <Input
+                    value={depthM.toLocaleString()}
+                    placeholder="深度数值"
+                    suffix="米"
+                    onChange={(v) => {
+                      const n = Number(v.replace(/,/g, ''));
+                      if (!Number.isNaN(n)) setDepthM(n);
+                    }}
+                  />
                 </FormField>
 
                 <FormField label="额定功率" hint="钻机铭牌功率">
@@ -592,7 +603,7 @@ const DrillingPlanPage: React.FC = () => {
                     display: 'flex', alignItems: 'center', gap: 8,
                   }}>
                     <div style={{ flex: 1 }}>
-                      <Input value="12,400" placeholder="0" suffix="kWh" />
+                      <Input value={(estimate?.dailyKwh ?? 12400).toLocaleString()} placeholder="0" suffix="kWh" />
                     </div>
                     <span onClick={runAiEstimate} style={{
                       fontSize: 12, padding: '10px 14px', borderRadius: 7,
@@ -664,7 +675,7 @@ const DrillingPlanPage: React.FC = () => {
           </div>
 
           {/* Right: AI Preview */}
-          <AIPreview />
+          <AIPreview estimate={estimate} />
         </div>
       </div>
     </div>

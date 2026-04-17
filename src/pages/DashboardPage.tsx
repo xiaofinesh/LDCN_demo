@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { C, FONT_MONO, FONT_SANS } from '../constants/tokens';
+import { C, FONT_MONO } from '../constants/tokens';
 import { MAP_BASE64 } from '../assets/mapBase64';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
-
-void FONT_SANS; // referenced implicitly inline
 
 // ── Types ──
 type BatteryStatus = 'supplying' | 'standby' | 'charging' | 'to_station';
