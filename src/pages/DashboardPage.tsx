@@ -112,7 +112,7 @@ const KPICard: React.FC<KPICardProps> = ({ label, value, unit, sub, color, icon,
   </div>
 );
 
-const BatteryCard: React.FC<{ b: BatteryData }> = ({ b }) => {
+const BatteryCard: React.FC<{ b: BatteryData; onOpen: () => void }> = ({ b, onOpen }) => {
   const st = STATUS_MAP[b.status];
   const r = 30, stroke = 5;
   const circ = 2 * Math.PI * r;
@@ -120,10 +120,16 @@ const BatteryCard: React.FC<{ b: BatteryData }> = ({ b }) => {
   const socColor = b.soc > 60 ? C.accent : b.soc > 25 ? C.orange : C.red;
 
   return (
-    <div style={{
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+      style={{
       background: C.bgCard,
       border: `1px solid ${C.border}`,
       borderRadius: 10,
+      cursor: 'pointer',
       padding: '16px 18px',
       display: 'flex', gap: 16, alignItems: 'center',
       boxShadow: '0 1px 2px rgba(15,23,42,0.03)',
@@ -651,7 +657,7 @@ const DashboardPage: React.FC = () => {
               <span>电池状态</span>
               <span style={{ fontSize: 11, color: C.textMut, fontWeight: 500 }}>容量 5,000 kWh/块</span>
             </div>
-            {BATTERIES.map(b => <BatteryCard key={b.id} b={b} />)}
+            {BATTERIES.map(b => <BatteryCard key={b.id} b={b} onOpen={() => navigate(`/battery?id=${b.id}`)} />)}
 
             {/* Activity feed */}
             <div style={{ marginTop: 6 }}>
